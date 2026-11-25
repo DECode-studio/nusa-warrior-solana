@@ -66,7 +66,6 @@ export function UserShopView(): React.ReactElement {
     openingReceipt,
     closeOpeningModal,
     errorMsg,
-    isGuest,
     claimFreeStarter,
     submitCheckout,
   } = useShop();
@@ -185,7 +184,6 @@ export function UserShopView(): React.ReactElement {
       {!loading && !loadError && currentTab === "topup" && (
         <ShopTopupSection
           nusaPointBalance={nusaPointBalance}
-          isGuest={isGuest}
           buyerName={buyerName}
           onBuyerNameChange={setBuyerName}
           buyerEmail={buyerEmail}

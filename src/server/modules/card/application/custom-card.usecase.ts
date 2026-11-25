@@ -210,7 +210,7 @@ export async function listPendingCustomCardsUseCase() {
     },
     include: {
       creator: {
-        select: { id: true, name: true, email: true },
+        select: { id: true, name: true, walletAddress: true },
       },
     },
     orderBy: { createdAt: "asc" },

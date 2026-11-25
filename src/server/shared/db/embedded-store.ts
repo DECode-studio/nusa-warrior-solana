@@ -19,13 +19,11 @@ import { logServerEvent } from "../logging/server-logger";
 
 export interface StoredUserRecord {
   id: string;
-  email: string;
+  walletAddress?: string | null;
   name: string;
-  googleId?: string | null;
   avatarUrl?: string | null;
   passwordHash: string;
   role: UserRoleValue;
-  isGuest?: boolean;
   lastActiveAt?: string;
   hasClaimedStarterPack?: boolean;
   paymentModeOverride?: "DEV" | "PROD" | null;
@@ -379,7 +377,7 @@ function createInitialSeedState(): EmbeddedDatabaseState {
   const users: StoredUserRecord[] = [
     {
       id: "usr-admin-01",
-      email: "admin@nusantaracard.id",
+      walletAddress: null,
       name: "Admin Nusantara Card",
       passwordHash: defaultPasswordHash,
       role: "ADMIN",
@@ -387,7 +385,7 @@ function createInitialSeedState(): EmbeddedDatabaseState {
     },
     {
       id: "usr-curator-01",
-      email: "curator@nusantaracard.id",
+      walletAddress: null,
       name: "Kurator Sejarah Nusantara",
       passwordHash: defaultPasswordHash,
       role: "CURATOR",
@@ -395,7 +393,7 @@ function createInitialSeedState(): EmbeddedDatabaseState {
     },
     {
       id: "usr-player-01",
-      email: "player@nusantaracard.id",
+      walletAddress: null,
       name: "Kesatria Dwipantara",
       passwordHash: defaultPasswordHash,
       role: "PLAYER",
@@ -728,7 +726,7 @@ export function getEmbeddedStore(): EmbeddedDatabaseState {
             ? parsed.paymentOrders.some((order) => order.userId === user.id && order.amountIdr === 0 && order.paymentStatus === "PAID")
             : user.hasClaimedStarterPack ?? false;
           user.paymentModeOverride ??= null;
-          user.isGuest ??= false;
+          user.walletAddress ??= null;
           user.lastActiveAt ??= user.createdAt ?? new Date().toISOString();
         }
 

@@ -51,10 +51,9 @@ export async function createAuthSession(
   const data = {
     id,
     userId: user.userId,
-    email: user.email,
+    walletAddress: user.walletAddress ?? null,
     name: user.name,
     role: user.role,
-    isGuest: Boolean(user.isGuest),
     refreshTokenHash: refresh.hash,
     expiresAt,
     createdAt,
@@ -88,10 +87,9 @@ export async function getActiveAuthSession(
   return {
     id: session.id,
     userId: session.userId,
-    email: session.email,
+    walletAddress: session.walletAddress ?? null,
     name: session.name,
     role: session.role as UserRoleValue,
-    isGuest: Boolean((session as { isGuest?: boolean }).isGuest),
     refreshTokenHash: session.refreshTokenHash,
     expiresAt: session.expiresAt,
     createdAt: session.createdAt,

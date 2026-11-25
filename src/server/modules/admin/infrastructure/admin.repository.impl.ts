@@ -37,7 +37,7 @@ export class AdminRepositoryImpl implements AdminRepository {
         }),
       ]);
       return {
-        user: { id: user.id, email: user.email, name: user.name, role: user.role as UserRoleValue, createdAt: user.createdAt.toISOString() },
+        user: { id: user.id, walletAddress: user.walletAddress ?? null, name: user.name, role: user.role as UserRoleValue, createdAt: user.createdAt.toISOString() },
         ownedCards: holdings.flatMap((holding) => {
           const card = cardsById.get(holding.cardId);
           return card ? [{ card, quantity: holding.quantity }] : [];
@@ -92,7 +92,7 @@ export class AdminRepositoryImpl implements AdminRepository {
         };
       });
     return {
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, createdAt: user.createdAt },
+      user: { id: user.id, walletAddress: user.walletAddress ?? null, name: user.name, role: user.role, createdAt: user.createdAt },
       ownedCards,
       decks,
     };
@@ -329,7 +329,7 @@ export class AdminRepositoryImpl implements AdminRepository {
       });
       return rows.map((u) => ({
         id: u.id,
-        email: u.email,
+        walletAddress: u.walletAddress ?? null,
         name: u.name,
         role: u.role as UserRoleValue,
         createdAt: u.createdAt.toISOString(),
@@ -339,7 +339,7 @@ export class AdminRepositoryImpl implements AdminRepository {
     const store = getEmbeddedStore();
     return store.users.map((u) => ({
       id: u.id,
-      email: u.email,
+      walletAddress: u.walletAddress ?? null,
       name: u.name,
       role: u.role,
       createdAt: u.createdAt,
@@ -364,7 +364,7 @@ export class AdminRepositoryImpl implements AdminRepository {
         ? {
             OR: [
               { name: { contains: search, mode: "insensitive" as const } },
-              { email: { contains: search, mode: "insensitive" as const } },
+              { walletAddress: { contains: search, mode: "insensitive" as const } },
             ],
           }
         : {};
@@ -383,7 +383,7 @@ export class AdminRepositoryImpl implements AdminRepository {
       return {
         items: rows.map((u) => ({
           id: u.id,
-          email: u.email,
+          walletAddress: u.walletAddress ?? null,
           name: u.name,
           role: u.role as UserRoleValue,
           createdAt: u.createdAt.toISOString(),
@@ -402,7 +402,7 @@ export class AdminRepositoryImpl implements AdminRepository {
       users = users.filter(
         (u) =>
           u.name.toLowerCase().includes(search) ||
-          u.email.toLowerCase().includes(search) ||
+          (u.walletAddress ?? "").toLowerCase().includes(search) ||
           u.role.toLowerCase().includes(search)
       );
     }
@@ -415,7 +415,7 @@ export class AdminRepositoryImpl implements AdminRepository {
     return {
       items: sliced.map((u) => ({
         id: u.id,
-        email: u.email,
+        walletAddress: u.walletAddress ?? null,
         name: u.name,
         role: u.role,
         createdAt: u.createdAt,
@@ -437,7 +437,7 @@ export class AdminRepositoryImpl implements AdminRepository {
       });
       return {
         id: updated.id,
-        email: updated.email,
+        walletAddress: updated.walletAddress ?? null,
         name: updated.name,
         role: updated.role as UserRoleValue,
         createdAt: updated.createdAt.toISOString(),
@@ -453,7 +453,7 @@ export class AdminRepositoryImpl implements AdminRepository {
     persistEmbeddedStore(store);
     return {
       id: user.id,
-      email: user.email,
+      walletAddress: user.walletAddress ?? null,
       name: user.name,
       role: user.role,
       createdAt: user.createdAt,

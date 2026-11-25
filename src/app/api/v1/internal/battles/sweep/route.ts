@@ -4,7 +4,6 @@ import { sweepLeagueRoomsUseCase } from "@/server/modules/league/application/lea
 import { releaseExpiredCardEscrows } from "@/server/modules/collection/infrastructure/card-escrow.repository";
 import { pruneExpiredRateLimitBuckets } from "@/server/shared/http/distributed-rate-limit";
 import { pruneExpiredAuthSessions } from "@/server/shared/auth/auth-session-store";
-import { cleanupInactiveGuestsUseCase } from "@/server/modules/auth/application/auth.usecase";
 import { handleRouteError, okResponse } from "@/server/shared/http/api-response";
 
 export async function POST(request: Request): Promise<Response> {
@@ -20,13 +19,12 @@ export async function POST(request: Request): Promise<Response> {
     ) {
       return new Response(null, { status: 404 });
     }
-    const [abandonedCount, leagueSweepResult, releasedEscrows, prunedRateLimitBuckets, prunedAuthSessions, cleanedGuests] = await Promise.all([
+    const [abandonedCount, leagueSweepResult, releasedEscrows, prunedRateLimitBuckets, prunedAuthSessions] = await Promise.all([
       sweepBattleSessionsUseCase(),
       sweepLeagueRoomsUseCase(),
       releaseExpiredCardEscrows(),
       pruneExpiredRateLimitBuckets(),
       pruneExpiredAuthSessions(),
-      cleanupInactiveGuestsUseCase(),
     ]);
     return okResponse({
       abandonedCount,
@@ -35,7 +33,6 @@ export async function POST(request: Request): Promise<Response> {
       releasedEscrows,
       prunedRateLimitBuckets,
       prunedAuthSessions,
-      cleanedGuests,
     });
   } catch (error: unknown) {
     return handleRouteError(error, request);

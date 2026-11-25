@@ -25,7 +25,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
         ? {
             OR: [
               { name: { contains: search, mode: "insensitive" as const } },
-              { email: { contains: search, mode: "insensitive" as const } },
+              { walletAddress: { contains: search, mode: "insensitive" as const } },
             ],
           }
         : {};
@@ -42,11 +42,11 @@ export class PaymentRepositoryImpl implements PaymentRepository {
           select: {
             id: true,
             name: true,
-            email: true,
+            walletAddress: true,
             role: true,
             paymentModeOverride: true,
           },
-          orderBy: [{ email: "asc" }],
+          orderBy: [{ name: "asc" }],
           skip: (page - 1) * limit,
           take: limit,
         }),
@@ -60,7 +60,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
         users: users.map((user) => ({
           userId: user.id,
           name: user.name,
-          email: user.email,
+          walletAddress: user.walletAddress ?? null,
           role: user.role,
           paymentModeOverride: user.paymentModeOverride,
         })),
@@ -78,14 +78,14 @@ export class PaymentRepositoryImpl implements PaymentRepository {
       userList = userList.filter(
         (u) =>
           u.name.toLowerCase().includes(search) ||
-          u.email.toLowerCase().includes(search) ||
+          (u.walletAddress ?? "").toLowerCase().includes(search) ||
           u.role.toLowerCase().includes(search)
       );
     }
 
     const totalUsers = userList.length;
     const totalPages = Math.max(1, Math.ceil(totalUsers / limit));
-    const sorted = [...userList].sort((a, b) => a.email.localeCompare(b.email));
+    const sorted = [...userList].sort((a, b) => a.name.localeCompare(b.name));
     const sliced = sorted.slice((page - 1) * limit, page * limit);
 
     return {
@@ -93,7 +93,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
       users: sliced.map((user) => ({
         userId: user.id,
         name: user.name,
-        email: user.email,
+        walletAddress: user.walletAddress ?? null,
         role: user.role,
         paymentModeOverride: user.paymentModeOverride ?? null,
       })),
@@ -135,7 +135,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
       const user = await prisma.user.update({
         where: { id: userId },
         data: { paymentModeOverride: mode },
-        select: { id: true, name: true, email: true, role: true, paymentModeOverride: true },
+        select: { id: true, name: true, walletAddress: true, role: true, paymentModeOverride: true },
       }).catch((error: unknown) => {
         if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
           throw AppError.notFound("Akun pengguna tidak ditemukan.");
@@ -145,7 +145,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
       return {
         userId: user.id,
         name: user.name,
-        email: user.email,
+        walletAddress: user.walletAddress ?? null,
         role: user.role,
         paymentModeOverride: user.paymentModeOverride,
       };
@@ -159,7 +159,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
     return {
       userId: user.id,
       name: user.name,
-      email: user.email,
+      walletAddress: user.walletAddress ?? null,
       role: user.role,
       paymentModeOverride: mode,
     };

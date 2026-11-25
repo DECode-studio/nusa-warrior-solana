@@ -8,8 +8,11 @@ import type {
 import type {
   AdminUserRecordEntity,
   AdminUserDetailEntity,
-  GoogleSsoConfigEntity,
   LoginCredentialsRequest,
+  SolanaNonceResponse,
+  SolanaRegisterRequest,
+  SolanaVerifyRequest,
+  SolanaVerifyResultEntity,
   UpdateAdminUserRoleRequest,
   UpdateCardCurationRequest,
   UpdateReportStatusRequest,
@@ -29,12 +32,22 @@ export class AuthUseCase {
     return this.authRepository.getCurrentUser();
   }
 
-  public async getGoogleSsoConfig(): Promise<GoogleSsoConfigEntity> {
-    return this.authRepository.getGoogleSsoConfig();
+  public async requestSolanaNonce(
+    walletAddress: string
+  ): Promise<SolanaNonceResponse> {
+    return this.authRepository.requestSolanaNonce(walletAddress);
   }
 
-  public async loginAsGuest(): Promise<UserEntity> {
-    return this.authRepository.loginAsGuest();
+  public async verifySolanaSignature(
+    request: SolanaVerifyRequest
+  ): Promise<SolanaVerifyResultEntity> {
+    return this.authRepository.verifySolanaSignature(request);
+  }
+
+  public async completeSolanaRegistration(
+    request: SolanaRegisterRequest
+  ): Promise<UserEntity> {
+    return this.authRepository.completeSolanaRegistration(request);
   }
 
   public async loginWithCredentials(

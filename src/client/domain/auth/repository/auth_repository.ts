@@ -6,8 +6,11 @@ import type {
 import type {
   AdminUserRecordEntity,
   AdminUserDetailEntity,
-  GoogleSsoConfigEntity,
   LoginCredentialsRequest,
+  SolanaNonceResponse,
+  SolanaRegisterRequest,
+  SolanaVerifyRequest,
+  SolanaVerifyResultEntity,
   UpdateAdminUserRoleRequest,
   UpdateCardCurationRequest,
   UpdateReportStatusRequest,
@@ -16,8 +19,13 @@ import type {
 
 export interface AuthRepository {
   getCurrentUser(): Promise<UserEntity | null>;
-  getGoogleSsoConfig(): Promise<GoogleSsoConfigEntity>;
-  loginAsGuest(): Promise<UserEntity>;
+  requestSolanaNonce(walletAddress: string): Promise<SolanaNonceResponse>;
+  verifySolanaSignature(
+    request: SolanaVerifyRequest
+  ): Promise<SolanaVerifyResultEntity>;
+  completeSolanaRegistration(
+    request: SolanaRegisterRequest
+  ): Promise<UserEntity>;
   loginWithCredentials(request: LoginCredentialsRequest): Promise<UserEntity>;
   logout(): Promise<void>;
   getAdminCards(): Promise<CardEntity[]>;

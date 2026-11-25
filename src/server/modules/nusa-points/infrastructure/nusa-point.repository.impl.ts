@@ -40,7 +40,7 @@ export async function grantNusaPoints(input: {
 
   const store = getEmbeddedStore();
   const user = store.users.find((entry) => entry.id === input.userId);
-  if (!user || user.isGuest || input.amount <= 0) return 0;
+  if (!user || input.amount <= 0) return 0;
   if (store.nusaPointTransactions.some((entry) =>
     entry.userId === input.userId && entry.source === input.source && entry.sourceId === input.sourceId
   )) return 0;

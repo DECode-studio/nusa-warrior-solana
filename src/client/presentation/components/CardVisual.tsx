@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Shield, Sword, EyeOff, Info } from "lucide-react";
 import type { CardEntity } from "@/client/domain/card/entity/card_entity";
 import { useTranslator } from "@/core/translator";
-import cardBackImage from "../../../../assets/cards/nusantara-card.back-card.png";
+const CARD_BACK_IMAGE = "/cards/nusantara-card.back-card.png";
 
 export interface CardVisualProps {
   card: CardEntity;
@@ -134,7 +134,7 @@ export function CardVisual({
       {isFaceDown ? (
         <div className="relative h-full w-full">
           <Image
-            src={cardBackImage}
+            src={CARD_BACK_IMAGE}
             alt={t("card.faceDownAlt")}
             width={400}
             height={588}

@@ -3,9 +3,9 @@ export const API_BASE_PATHS = {
 } as const;
 
 export const AUTH_API_ROUTES = {
-  google: `${API_BASE_PATHS.v1}/auth/google`,
-  googleCallback: `${API_BASE_PATHS.v1}/auth/google/callback`,
-  guest: `${API_BASE_PATHS.v1}/auth/guest`,
+  solanaNonce: `${API_BASE_PATHS.v1}/auth/solana/nonce`,
+  solanaVerify: `${API_BASE_PATHS.v1}/auth/solana/verify`,
+  solanaRegister: `${API_BASE_PATHS.v1}/auth/solana/register`,
   login: `${API_BASE_PATHS.v1}/auth/login`,
   logout: `${API_BASE_PATHS.v1}/auth/logout`,
   me: `${API_BASE_PATHS.v1}/auth/me`,
@@ -98,9 +98,9 @@ export const ADMIN_API_ROUTES = {
 
 export const API_ROUTES = {
   AUTH: {
-    GOOGLE: AUTH_API_ROUTES.google,
-    GOOGLE_CALLBACK: AUTH_API_ROUTES.googleCallback,
-    GUEST: AUTH_API_ROUTES.guest,
+    SOLANA_NONCE: AUTH_API_ROUTES.solanaNonce,
+    SOLANA_VERIFY: AUTH_API_ROUTES.solanaVerify,
+    SOLANA_REGISTER: AUTH_API_ROUTES.solanaRegister,
     LOGIN: AUTH_API_ROUTES.login,
     LOGOUT: AUTH_API_ROUTES.logout,
     ME: AUTH_API_ROUTES.me,

@@ -88,7 +88,7 @@ async function getParsedFonts(): Promise<ParsedFonts> {
     return cachedParsedFonts;
   }
 
-  const fontsDir = path.resolve(process.cwd(), "assets/fonts");
+  const fontsDir = path.resolve(process.cwd(), "public/fonts");
   const [mothproofBuf, abrilBuf, abhayaBuf] = await Promise.all([
     fs.readFile(path.join(fontsDir, "MothproofScript.ttf")),
     fs.readFile(path.join(fontsDir, "AbrilFatface-Regular.ttf")),
@@ -138,7 +138,7 @@ export class CustomCardCompositorService {
 
   static async renderAndSaveCard(input: CustomCardRenderInput): Promise<{ imagePath: string }> {
     const kingdomFolder = KINGDOM_FOLDER_MAP[input.kingdom] ?? "majapahit";
-    const templateDir = path.resolve(process.cwd(), "assets/card-templates", kingdomFolder);
+    const templateDir = path.resolve(process.cwd(), "public/assets/card-templates", kingdomFolder);
     const framePath = path.join(templateDir, "frame.png");
     let bgPath = path.join(templateDir, "background.png");
 
@@ -146,7 +146,7 @@ export class CustomCardCompositorService {
     try {
       await fs.access(bgPath);
     } catch {
-      bgPath = path.resolve(process.cwd(), "assets/card-templates/majapahit/background.png");
+      bgPath = path.resolve(process.cwd(), "public/assets/card-templates/majapahit/background.png");
     }
 
     const { CARD_WIDTH, CARD_HEIGHT } = CustomCardCompositorService;

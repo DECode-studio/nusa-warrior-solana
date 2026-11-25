@@ -30,14 +30,14 @@ const mockInitialSettings: PaymentGatewaySettingsEntity = {
     {
       userId: "usr-1",
       name: "Budi Santoso",
-      email: "budi@test.id",
+      walletAddress: "11111111111111111111111111111111",
       role: "PLAYER",
       paymentModeOverride: null,
     },
     {
       userId: "usr-2",
       name: "Siti Rahma",
-      email: "siti@test.id",
+      walletAddress: null,
       role: "CURATOR",
       paymentModeOverride: "PROD",
     },
@@ -64,7 +64,7 @@ describe("AdminPaymentGateway Architecture, Domain & Data Layer", () => {
         return {
           userId,
           name: found?.name ?? "User",
-          email: found?.email ?? "email@test.id",
+          walletAddress: found?.walletAddress ?? null,
           role: found?.role ?? "PLAYER",
           paymentModeOverride: mode,
         };
@@ -102,7 +102,7 @@ describe("AdminPaymentGateway Architecture, Domain & Data Layer", () => {
           {
             userId: "u-1",
             name: "Gajah Mada",
-            email: "gajah@majapahit.id",
+            walletAddress: null,
             role: "ADMIN",
             paymentModeOverride: null,
           },
@@ -121,7 +121,7 @@ describe("AdminPaymentGateway Architecture, Domain & Data Layer", () => {
       updateUserOverride: vi.fn().mockResolvedValue({
         userId: "u-1",
         name: "Gajah Mada",
-        email: "gajah@majapahit.id",
+        walletAddress: null,
         role: "ADMIN",
         paymentModeOverride: "DEV",
       }),
@@ -145,7 +145,7 @@ describe("AdminPaymentGateway Architecture, Domain & Data Layer", () => {
     const userApi: PaymentGatewayUserApiModel = {
       userId: "usr-42",
       name: "Tribhuwana",
-      email: "queen@majapahit.id",
+      walletAddress: null,
       role: "ADMIN",
       paymentModeOverride: "PROD",
     };
@@ -153,7 +153,7 @@ describe("AdminPaymentGateway Architecture, Domain & Data Layer", () => {
     expect(userEntity).toEqual({
       userId: "usr-42",
       name: "Tribhuwana",
-      email: "queen@majapahit.id",
+      walletAddress: null,
       role: "ADMIN",
       paymentModeOverride: "PROD",
     });

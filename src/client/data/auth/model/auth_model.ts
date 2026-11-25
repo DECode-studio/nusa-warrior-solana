@@ -6,10 +6,9 @@ import type {
 
 export interface UserApiModel {
   userId: string;
-  email: string;
+  walletAddress: string | null;
   name: string;
   role: UserRole;
-  isGuest?: boolean;
   hasClaimedStarterPack?: boolean;
   avatarUrl?: string | null;
   nusaPoints?: number;
@@ -17,10 +16,9 @@ export interface UserApiModel {
 
 export interface AdminUserApiModel {
   id: string;
-  email: string;
+  walletAddress: string | null;
   name: string;
   role: UserRole;
-  isGuest?: boolean;
   hasClaimedStarterPack?: boolean;
   createdAt: string;
 }
@@ -28,10 +26,9 @@ export interface AdminUserApiModel {
 export function mapUserModelToEntity(model: UserApiModel): UserEntity {
   return {
     userId: model.userId,
-    email: model.email,
+    walletAddress: model.walletAddress ?? null,
     name: model.name,
     role: model.role,
-    isGuest: model.isGuest,
     hasClaimedStarterPack: model.hasClaimedStarterPack,
     avatarUrl: model.avatarUrl ?? null,
     nusaPoints: model.nusaPoints ?? 0,
@@ -43,10 +40,9 @@ export function mapAdminUserModelToEntity(
 ): AdminUserRecordEntity {
   return {
     id: model.id,
-    email: model.email,
+    walletAddress: model.walletAddress ?? null,
     name: model.name,
     role: model.role,
-    isGuest: model.isGuest,
     createdAt: model.createdAt,
   };
 }

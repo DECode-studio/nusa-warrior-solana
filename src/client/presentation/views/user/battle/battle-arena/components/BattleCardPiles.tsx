@@ -5,7 +5,7 @@ import { BATTLE_TEXT_CONSTANT } from "../constants/TextConstant";
 import Image from "next/image";
 import type { BattleStateEntity } from "@/client/domain/battle/entity/battle_entity";
 import type { CardEntity } from "@/client/domain/card/entity/card_entity";
-import cardBackImage from "../../../../../../../../assets/cards/nusantara-card.back-card.png";
+const CARD_BACK_IMAGE = "/cards/nusantara-card.back-card.png";
 import { useTranslator } from "@/core/translator";
 import { BATTLE_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
 import styles from "./BattleAnimations.module.css";
@@ -26,7 +26,7 @@ interface PileProps {
 
 function Pile({ id, label, count, topCard, isDeck, caption, positionClass }: PileProps): React.ReactElement {
   const { t } = useTranslator();
-  const imagePath = isDeck ? cardBackImage.src : topCard?.imagePath;
+  const imagePath = isDeck ? CARD_BACK_IMAGE : topCard?.imagePath;
 
   return (
     <div

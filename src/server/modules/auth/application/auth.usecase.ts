@@ -1,38 +1,15 @@
 import "server-only";
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import { PublicKey } from "@solana/web3.js";
 import bcrypt from "bcryptjs";
+import bs58 from "bs58";
+import nacl from "tweetnacl";
 import { AppError } from "@/server/shared/errors/app-error";
 import {
   type SessionPayload,
-  type UserRoleValue,
   createSessionTokens,
 } from "@/server/shared/auth/session";
 import { authRepository } from "../infrastructure/auth.repository.impl";
-
-export interface GoogleOAuthConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-  isConfigured: boolean;
-}
-
-export interface GoogleTokenResponse {
-  access_token: string;
-  id_token?: string;
-  expires_in: number;
-  token_type: string;
-  scope: string;
-}
-
-export interface GoogleUserInfoResponse {
-  sub: string;
-  email: string;
-  email_verified?: boolean;
-  name?: string;
-  given_name?: string;
-  family_name?: string;
-  picture?: string;
-}
 
 export interface LoginResult {
   user: SessionPayload;
@@ -40,239 +17,153 @@ export interface LoginResult {
   refreshToken: string;
 }
 
+export type SolanaVerifyResult =
+  | {
+      status: "AUTHENTICATED";
+      user: SessionPayload;
+      accessToken: string;
+      refreshToken: string;
+    }
+  | {
+      status: "NEEDS_NICKNAME";
+      walletAddress: string;
+    };
+
 let dummyAdminPasswordHash: Promise<string> | null = null;
 
-export function getGoogleOAuthConfig(): GoogleOAuthConfig {
-  const clientId = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
-  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
-  const baseUrl = (
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-  ).replace(/\/$/, "");
-  const redirectUri = (
-    process.env.GOOGLE_REDIRECT_URI ??
-    `${baseUrl}/api/v1/auth/google/callback`
-  ).trim();
+export function normalizeSolanaWalletAddress(walletAddress: string): string {
+  try {
+    const pubkey = new PublicKey(walletAddress.trim());
+    return pubkey.toBase58();
+  } catch {
+    throw AppError.badRequest("Alamat dompet Solana tidak valid.");
+  }
+}
 
-  const isConfigured =
-    Boolean(clientId) &&
-    Boolean(clientSecret) &&
-    !clientId.startsWith("your-google-client-id") &&
-    !clientSecret.startsWith("your-google-client-secret");
+export function createSolanaChallengeUseCase(walletAddress: string): {
+  walletAddress: string;
+  nonce: string;
+  message: string;
+} {
+  const normalizedAddress = normalizeSolanaWalletAddress(walletAddress);
+  const nonce = randomBytes(16).toString("hex");
+  const issuedAt = new Date().toISOString();
+  const message = [
+    "Sign in to Nusa Warriors (Solana Devnet)",
+    `Wallet: ${normalizedAddress}`,
+    `Nonce: ${nonce}`,
+    `Issued At: ${issuedAt}`,
+  ].join("\n");
 
   return {
-    clientId,
-    clientSecret,
-    redirectUri,
-    isConfigured,
+    walletAddress: normalizedAddress,
+    nonce,
+    message,
   };
 }
 
-export function buildGoogleAuthorizationUrlUseCase(state: string): string {
-  const config = getGoogleOAuthConfig();
-  if (!config.isConfigured) {
-    throw AppError.badRequest(
-      "GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET belum dikonfigurasi pada file .env server."
-    );
+export function verifySolanaSignature(input: {
+  walletAddress: string;
+  message: string;
+  signature: string;
+}): string {
+  const normalizedAddress = normalizeSolanaWalletAddress(input.walletAddress);
+  let pubkeyBytes: Uint8Array;
+  let signatureBytes: Uint8Array;
+
+  try {
+    pubkeyBytes = new PublicKey(normalizedAddress).toBytes();
+    signatureBytes = bs58.decode(input.signature.trim());
+  } catch {
+    throw AppError.badRequest("Format signature dompet Solana tidak valid.");
   }
 
-  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  url.searchParams.set("client_id", config.clientId);
-  url.searchParams.set("redirect_uri", config.redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "openid email profile");
-  url.searchParams.set("access_type", "online");
-  url.searchParams.set("prompt", "select_account");
-  url.searchParams.set("state", state);
-
-  return url.toString();
-}
-
-async function exchangeGoogleCodeForProfile(
-  code: string
-): Promise<GoogleUserInfoResponse> {
-  const config = getGoogleOAuthConfig();
-  if (!config.isConfigured) {
-    throw AppError.badRequest(
-      "Konfigurasi Google SSO (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) belum diisi di .env."
-    );
+  if (signatureBytes.length !== nacl.sign.signatureLength) {
+    throw AppError.unauthorized("Panjang signature dompet Solana tidak valid.");
   }
 
-  const tokenParams = new URLSearchParams({
-    code,
-    client_id: config.clientId,
-    client_secret: config.clientSecret,
-    redirect_uri: config.redirectUri,
-    grant_type: "authorization_code",
-  });
-
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: tokenParams.toString(),
-    cache: "no-store",
-  });
-
-  if (!tokenRes.ok) {
-    throw AppError.unauthorized(
-      "Gagal menukar authorization code dengan Google OAuth 2.0 Token."
-    );
-  }
-
-  const tokenData = (await tokenRes.json()) as GoogleTokenResponse;
-  if (!tokenData.access_token) {
-    throw AppError.unauthorized(
-      "Respons token Google tidak menyertakan access_token."
-    );
-  }
-
-  const profileRes = await fetch(
-    "https://www.googleapis.com/oauth2/v3/userinfo",
-    {
-      headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
-      },
-      cache: "no-store",
-    }
+  const messageBytes = new TextEncoder().encode(input.message);
+  const isValid = nacl.sign.detached.verify(
+    messageBytes,
+    signatureBytes,
+    pubkeyBytes
   );
 
-  if (!profileRes.ok) {
-    throw AppError.unauthorized("Gagal mengambil profil pengguna dari Google.");
+  if (!isValid) {
+    throw AppError.unauthorized("Verifikasi signature dompet Solana gagal.");
   }
 
-  const profile = (await profileRes.json()) as GoogleUserInfoResponse;
-  if (!profile.email || !profile.sub || profile.email_verified !== true) {
-    throw AppError.unauthorized(
-      "Akun Google harus memiliki alamat email terverifikasi untuk masuk."
-    );
-  }
-
-  return profile;
+  return normalizedAddress;
 }
 
-export async function loginWithGoogleCodeUseCase(
-  code: string
-): Promise<LoginResult> {
-  const profile = await exchangeGoogleCodeForProfile(code);
+export async function verifySolanaLoginUseCase(input: {
+  walletAddress: string;
+  message: string;
+  signature: string;
+}): Promise<SolanaVerifyResult> {
+  const normalizedAddress = verifySolanaSignature(input);
 
-  const displayName =
-    profile.name?.trim() ||
-    profile.given_name?.trim() ||
-    profile.email.split("@")[0] ||
-    "Pemain Nusantara";
+  const existingUser = await authRepository.findByWalletAddress(normalizedAddress);
+  if (!existingUser) {
+    return {
+      status: "NEEDS_NICKNAME",
+      walletAddress: normalizedAddress,
+    };
+  }
 
-  const user = await authRepository.upsertGoogleUser({
-    googleId: profile.sub,
-    email: profile.email,
-    name: displayName,
-    avatarUrl: profile.picture ?? null,
-  });
-
-  if (user.role !== "PLAYER") {
+  if (existingUser.role !== "PLAYER") {
     throw AppError.forbidden(
-      "Akun admin tidak dapat masuk menggunakan Google SSO. Gunakan username dan password admin."
+      "Akun admin tidak dapat masuk menggunakan dompet Solana. Gunakan username dan password admin."
     );
   }
 
+  void authRepository.touchLastActiveAt(existingUser.id).catch(() => {});
+
   const sessionPayload: SessionPayload = {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    isGuest: false,
-    hasClaimedStarterPack: Boolean(user.hasClaimedStarterPack),
+    userId: existingUser.id,
+    walletAddress: existingUser.walletAddress,
+    name: existingUser.name,
+    role: existingUser.role,
+    hasClaimedStarterPack: Boolean(existingUser.hasClaimedStarterPack),
+    avatarUrl: existingUser.avatarUrl ?? null,
   };
 
   const tokens = await createSessionTokens(sessionPayload);
-  return { user: sessionPayload, ...tokens };
-}
-
-export async function loginAsGuestUseCase(): Promise<LoginResult> {
-  const guestNumber = Math.floor(1000 + Math.random() * 9000);
-  const guestName = `Guest #${guestNumber}`;
-  const guestId = `usr-guest-${randomUUID()}`;
-  const guestEmail = `guest_${randomUUID().replace(/-/g, "").slice(0, 16)}@guest.local`;
-
-  const user = await authRepository.createGuestUser({
-    id: guestId,
-    name: guestName,
-    email: guestEmail,
-  });
-
-  // Serverless opportunistic cleanup for inactive guests (> 2 days)
-  void cleanupInactiveGuestsUseCase().catch(() => {});
-
-  const sessionPayload: SessionPayload = {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    isGuest: true,
-    hasClaimedStarterPack: false,
+  return {
+    status: "AUTHENTICATED",
+    user: sessionPayload,
+    ...tokens,
   };
-
-  const tokens = await createSessionTokens(sessionPayload);
-  return { user: sessionPayload, ...tokens };
 }
 
-export async function cleanupInactiveGuestsUseCase(): Promise<{
-  deletedUsers: number;
-  deletedDecks: number;
-}> {
-  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-  return authRepository.deleteInactiveGuestAccounts(twoDaysAgo);
-}
+export async function completeSolanaRegistrationUseCase(input: {
+  walletAddress: string;
+  nickname: string;
+}): Promise<LoginResult> {
+  const normalizedAddress = normalizeSolanaWalletAddress(input.walletAddress);
+  const nickname = input.nickname.trim();
 
-export async function linkGoogleAccountToGuestUseCase(
-  guestUserId: string,
-  code: string
-): Promise<LoginResult> {
-  const profile = await exchangeGoogleCodeForProfile(code);
-
-  const existingGuest = await authRepository.findById(guestUserId);
-  if (!existingGuest) {
-    throw AppError.notFound("Sesi akun tamu tidak ditemukan atau telah kedaluwarsa.");
-  }
-  if (!existingGuest.isGuest) {
-    throw AppError.badRequest("Akun saat ini bukan akun tamu.");
+  if (nickname.length < 2 || nickname.length > 32) {
+    throw AppError.badRequest("Nickname harus terdiri dari 2 hingga 32 karakter.");
   }
 
-  // Conflict handling: reject immediately if Google email or googleId already exists
-  const userByGoogleId = await authRepository.findByGoogleId(profile.sub);
-  if (userByGoogleId && userByGoogleId.id !== guestUserId) {
-    throw AppError.conflict(
-      "Akun Google ini sudah terdaftar pada pengguna lain. Silakan keluar dan masuk langsung menggunakan akun Google tersebut."
-    );
+  const existingUser = await authRepository.findByWalletAddress(normalizedAddress);
+  if (existingUser) {
+    throw AppError.conflict("Alamat dompet Solana ini sudah terdaftar.");
   }
 
-  const userByEmail = await authRepository.findByEmail(profile.email);
-  if (userByEmail && userByEmail.id !== guestUserId) {
-    throw AppError.conflict(
-      "Alamat email Google ini sudah terdaftar pada akun lain. Silakan keluar dan masuk langsung menggunakan akun tersebut."
-    );
-  }
-
-  const displayName =
-    profile.name?.trim() ||
-    profile.given_name?.trim() ||
-    existingGuest.name;
-
-  const updatedUser = await authRepository.linkGoogleAccount({
-    userId: guestUserId,
-    googleId: profile.sub,
-    email: profile.email,
-    name: displayName,
-    avatarUrl: profile.picture ?? null,
+  const createdUser = await authRepository.createSolanaUser({
+    walletAddress: normalizedAddress,
+    name: nickname,
   });
 
   const sessionPayload: SessionPayload = {
-    userId: updatedUser.id,
-    email: updatedUser.email,
-    name: updatedUser.name,
-    role: updatedUser.role,
-    isGuest: false,
-    hasClaimedStarterPack: Boolean(updatedUser.hasClaimedStarterPack),
+    userId: createdUser.id,
+    walletAddress: createdUser.walletAddress,
+    name: createdUser.name,
+    role: createdUser.role,
+    hasClaimedStarterPack: Boolean(createdUser.hasClaimedStarterPack),
+    avatarUrl: createdUser.avatarUrl ?? null,
   };
 
   const tokens = await createSessionTokens(sessionPayload);
@@ -330,10 +221,9 @@ export async function loginWithCredentialsUseCase(
 
   const sessionPayload: SessionPayload = {
     userId: "usr-admin-01",
-    email: "admin@nusawarriors.id",
+    walletAddress: null,
     name: "Admin Nusa Warriors",
     role: "ADMIN",
-    isGuest: false,
     hasClaimedStarterPack: true,
   };
 

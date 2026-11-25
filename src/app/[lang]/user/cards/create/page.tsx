@@ -19,5 +19,5 @@ export default async function CreateCustomCardPage({
     redirect(ROUTES.LOGIN(locale));
   }
 
-  return <CardForgeView isGuest={Boolean(session.isGuest)} />;
+  return <CardForgeView />;
 }

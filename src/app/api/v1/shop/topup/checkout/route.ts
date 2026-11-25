@@ -20,10 +20,6 @@ export async function POST(request: Request): Promise<Response> {
     assertSameOriginMutation(request);
     const session = await requirePlayerSession();
 
-    if (session.isGuest) {
-      throw AppError.forbidden("Fitur Top Up Nusa Point hanya tersedia untuk akun terdaftar. Silakan masuk atau buat akun.");
-    }
-
     await enforceRateLimit(`shop:topup:${session.userId}`, { capacity: 3, refillPerSecond: 3 / 300 });
     const parsed = await parseJsonWithSchema(request, topupCheckoutSchema, 16_384);
 

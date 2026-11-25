@@ -15,10 +15,13 @@ export const PUBLIC_LOGIN_TEXT_CONSTANT = {
 
   // Player section
   PLAYER_HEADING: "login.playerHeading",
-  GOOGLE_LOGIN_BTN: "login.googleLoginBtn",
-  GUEST_LOGIN_BTN: "login.guestLoginBtn",
-  GUEST_DISCLAIMER: "login.guestDisclaimer",
-  SSO_UNAVAILABLE: "login.ssoUnavailable",
+  SOLANA_CONNECT_BTN: "login.solanaConnectBtn",
+  SOLANA_SIGN_BTN: "login.solanaSignBtn",
+  DISCONNECT_WALLET_BTN: "login.disconnectWalletBtn",
+  NICKNAME_PROMPT: "login.nicknamePrompt",
+  NICKNAME_LABEL: "login.nicknameLabel",
+  NICKNAME_PLACEHOLDER: "login.nicknamePlaceholder",
+  NICKNAME_SUBMIT_BTN: "login.nicknameSubmitBtn",
 
   // Credentials section
   DIVIDER_CREDENTIALS: "login.dividerCredentials",

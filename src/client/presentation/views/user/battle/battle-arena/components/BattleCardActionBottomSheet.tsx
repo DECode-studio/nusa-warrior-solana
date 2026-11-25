@@ -16,7 +16,7 @@ import {
 import type { BattleSlotCharacter } from "@/client/domain/battle/entity/battle_entity";
 import type { CardEntity } from "@/client/domain/card/entity/card_entity";
 import { useTranslator } from "@/core/translator";
-import cardBackImage from "../../../../../../../../assets/cards/nusantara-card.back-card.png";
+const CARD_BACK_IMAGE = "/cards/nusantara-card.back-card.png";
 import { BaseModal } from "@/client/presentation/components/ui/BaseModal";
 import { Badge } from "@/client/presentation/components/ui/Badge";
 import { Button } from "@/client/presentation/components/ui/Button";
@@ -299,7 +299,7 @@ export function BattleCardActionBottomSheet({
           <div className="w-24 shrink-0 sm:w-28">
             <div className="relative aspect-[1024/1505] overflow-hidden rounded-lg shadow-md">
               <Image
-                src={isFaceDown ? cardBackImage : card.imagePath}
+                src={isFaceDown ? CARD_BACK_IMAGE : card.imagePath}
                 alt={isFaceDown ? t(BATTLE_TEXT_CONSTANT.UI_CARD_BACK_ALT) : card.name}
                 width={256}
                 height={376}

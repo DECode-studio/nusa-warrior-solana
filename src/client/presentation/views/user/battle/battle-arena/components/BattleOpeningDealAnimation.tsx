@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { BattleStateEntity } from "@/client/domain/battle/entity/battle_entity";
-import cardBackImage from "../../../../../../../../assets/cards/nusantara-card.back-card.png";
+const CARD_BACK_IMAGE = "/cards/nusantara-card.back-card.png";
 import { BATTLE_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
 import styles from "./BattleAnimations.module.css";
 
@@ -54,7 +54,7 @@ function makeDeal(
   const height = Math.max(40, targetRect.height * 0.72);
   return {
     id,
-    imagePath: cardBackImage.src,
+    imagePath: CARD_BACK_IMAGE,
     left: sourceRect.left + sourceRect.width / 2,
     top: sourceRect.top + sourceRect.height / 2,
     width,

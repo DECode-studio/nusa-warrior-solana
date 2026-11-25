@@ -30,15 +30,14 @@ export interface UserHeaderProps {
   readonly onRefresh: () => void;
   readonly isLoggingOut: boolean;
   readonly onLogout: () => Promise<void>;
-  readonly isGuest?: boolean;
   readonly onOpenTourModal?: () => void;
   readonly userName?: string | null;
-  readonly userEmail?: string | null;
+  readonly userWalletAddress?: string | null;
   readonly userPoints?: number;
   readonly avatarUrl?: string | null;
 }
 
-function getInitials(name?: string | null, email?: string | null): string {
+function getInitials(name?: string | null, walletAddress?: string | null): string {
   if (name?.trim()) {
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
@@ -46,10 +45,16 @@ function getInitials(name?: string | null, email?: string | null): string {
     }
     return name.trim().slice(0, 2).toUpperCase();
   }
-  if (email?.trim()) {
-    return email.trim().slice(0, 2).toUpperCase();
+  if (walletAddress?.trim()) {
+    return walletAddress.trim().slice(0, 2).toUpperCase();
   }
   return "NW";
+}
+
+function shortenWallet(address?: string | null): string {
+  if (!address) return "Solana Devnet";
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
 export function UserHeader({
@@ -58,10 +63,9 @@ export function UserHeader({
   onRefresh,
   isLoggingOut,
   onLogout,
-  isGuest = false,
   onOpenTourModal,
   userName,
-  userEmail,
+  userWalletAddress,
   userPoints = 0,
   avatarUrl,
 }: UserHeaderProps): React.ReactElement {
@@ -128,7 +132,7 @@ export function UserHeader({
     : t(currentItem?.labelKey ?? "userPanel.dashboardTitle");
 
   const displayName = userName ?? t(USER_LAYOUT_TEXT_CONSTANT.DEFAULT_WARRIOR_NAME);
-  const initials = getInitials(userName, userEmail);
+  const initials = getInitials(userName, userWalletAddress);
 
   return (
     <header
@@ -169,18 +173,6 @@ export function UserHeader({
 
           {/* Right Side: Quick Action Pills & User Avatar */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Guest SSO Link CTA (Desktop & Tablet only; in drawer on mobile) */}
-            {isGuest && (
-              <a
-                href={`${API_ROUTES.AUTH.GOOGLE}?action=link&lang=${encodeURIComponent(locale)}`}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber/15 px-3 py-1.5 font-display text-xs font-bold text-amber-light transition-colors hover:bg-amber hover:text-surface-base"
-                title="Tautkan akun ke Google agar tidak dihapus setelah 2 hari"
-              >
-                <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Tautkan Google</span>
-              </a>
-            )}
-
             {/* Refresh Data */}
             <button
               type="button"
@@ -267,14 +259,9 @@ export function UserHeader({
                       <p className="truncate font-display text-sm font-bold text-white">
                         {displayName}
                       </p>
-                      <p className="truncate text-xs text-[#CFCBE2]/75">
-                        {userEmail || (isGuest ? "Akun Tamu (2 Hari)" : "pendekar@nusantaracard.id")}
+                      <p className="truncate font-mono text-xs text-[#CFCBE2]/75">
+                        {shortenWallet(userWalletAddress)}
                       </p>
-                      {isGuest && (
-                        <span className="mt-1 inline-block rounded-full bg-amber-400/20 px-2 py-0.5 text-[9px] font-bold text-amber-300">
-                          TAMU SEMENTARA
-                        </span>
-                      )}
                     </div>
                   </div>
 

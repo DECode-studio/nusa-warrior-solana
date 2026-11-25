@@ -40,7 +40,6 @@ export interface UseShopReturn {
   openingReceipt: PaymentOrderEntity | null;
   closeOpeningModal: () => void;
   errorMsg: string | null;
-  isGuest: boolean;
   claimFreeStarter: () => Promise<void>;
   submitCheckout: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
 }
@@ -67,7 +66,6 @@ export function useShop(): UseShopReturn {
   const [openingReceipt, setOpeningReceipt] =
     useState<PaymentOrderEntity | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isGuest, setIsGuest] = useState<boolean>(false);
 
   const loadShop = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -82,9 +80,7 @@ export function useShop(): UseShopReturn {
       ]);
 
       if (user) {
-        setIsGuest(Boolean(user.isGuest));
         setBuyerName((prev) => prev || user.name || "");
-        setBuyerEmail((prev) => prev || user.email || "");
       }
       const sortedPacks = [...catalog.packs].sort((a, b) => {
         const aStarter = a.isStarter || a.code.includes("STARTER");
@@ -248,7 +244,6 @@ export function useShop(): UseShopReturn {
     openingReceipt,
     closeOpeningModal,
     errorMsg,
-    isGuest,
     claimFreeStarter,
     submitCheckout,
   };

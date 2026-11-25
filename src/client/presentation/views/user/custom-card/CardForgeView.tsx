@@ -18,18 +18,14 @@ import {
 import { CARD_FORGE_SEMANTIC_IDS } from "./constants/SemanticIdConstant";
 import { CARD_FORGE_TEXT_CONSTANT } from "./constants/TextConstant";
 
-export interface CardForgeViewProps {
-  readonly isGuest?: boolean;
-}
-
-export function CardForgeView({ isGuest = false }: CardForgeViewProps): React.ReactElement {
-  const { locale, t } = useTranslator();
-  const forge = useCardForge({ isGuest });
+export function CardForgeView(): React.ReactElement {
+  const { t } = useTranslator();
+  const forge = useCardForge();
 
   return (
     <div id={CARD_FORGE_SEMANTIC_IDS.PAGE_ROOT} className="space-y-8">
       {/* Header & Status Widget */}
-      <CardForgeHeader pricing={forge.pricing} isGuest={forge.isGuest} />
+      <CardForgeHeader pricing={forge.pricing} />
 
       {/* Success Modal / Banner */}
       {forge.successCard ? (
@@ -97,54 +93,43 @@ export function CardForgeView({ isGuest = false }: CardForgeViewProps): React.Re
               onDisclaimerChange={forge.setDisclaimerAccepted}
             />
 
-            {/* Tombol Cetak Kartu / Tautkan Akun */}
-            {forge.isGuest ? (
-              <a
-                id={CARD_FORGE_SEMANTIC_IDS.GUEST_LINK_BTN}
-                href={`${API_ROUTES.AUTH.GOOGLE}?action=link&lang=${encodeURIComponent(locale)}`}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 py-3.5 font-display text-sm font-bold text-white shadow-xl shadow-amber-500/30 transition hover:from-amber-400 hover:to-amber-500 active:scale-[0.99]"
-              >
-                <Link2 className="h-4 w-4" />
-                {t(CARD_FORGE_TEXT_CONSTANT.LINK_CTA_BTN)}
-              </a>
-            ) : (
-              <button
-                id={CARD_FORGE_SEMANTIC_IDS.SUBMIT_BTN}
-                type="submit"
-                disabled={
-                  forge.isSubmitting ||
-                  forge.isBpOver ||
-                  !forge.disclaimerAccepted ||
-                  !forge.imageFile ||
-                  (forge.pricing !== null && !forge.pricing.canAfford)
-                }
-                className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-display text-sm font-bold text-white shadow-xl transition ${
-                  forge.isSubmitting ||
-                  forge.isBpOver ||
-                  !forge.disclaimerAccepted ||
-                  !forge.imageFile ||
-                  (forge.pricing !== null && !forge.pricing.canAfford)
-                    ? "bg-white/10 text-white/40 cursor-not-allowed"
-                    : "bg-[#6766FF] hover:bg-[#5554e6] shadow-[#6766FF]/30 active:scale-[0.99]"
-                }`}
-              >
-                {forge.isSubmitting ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    {t(CARD_FORGE_TEXT_CONSTANT.SUBMIT_PROCESSING)}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    {forge.pricing && forge.pricing.nextCost === 0
-                      ? t(CARD_FORGE_TEXT_CONSTANT.SUBMIT_FREE)
-                      : t(CARD_FORGE_TEXT_CONSTANT.SUBMIT_PAID_WITH_COST, {
-                          cost: forge.pricing?.nextCost.toLocaleString("id-ID") ?? 0,
-                        })}
-                  </>
-                )}
-              </button>
-            )}
+            {/* Tombol Cetak Kartu */}
+            <button
+              id={CARD_FORGE_SEMANTIC_IDS.SUBMIT_BTN}
+              type="submit"
+              disabled={
+                forge.isSubmitting ||
+                forge.isBpOver ||
+                !forge.disclaimerAccepted ||
+                !forge.imageFile ||
+                (forge.pricing !== null && !forge.pricing.canAfford)
+              }
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-display text-sm font-bold text-white shadow-xl transition ${
+                forge.isSubmitting ||
+                forge.isBpOver ||
+                !forge.disclaimerAccepted ||
+                !forge.imageFile ||
+                (forge.pricing !== null && !forge.pricing.canAfford)
+                  ? "bg-white/10 text-white/40 cursor-not-allowed"
+                  : "bg-[#6766FF] hover:bg-[#5554e6] shadow-[#6766FF]/30 active:scale-[0.99]"
+              }`}
+            >
+              {forge.isSubmitting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  {t(CARD_FORGE_TEXT_CONSTANT.SUBMIT_PROCESSING)}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  {forge.pricing && forge.pricing.nextCost === 0
+                    ? t(CARD_FORGE_TEXT_CONSTANT.SUBMIT_FREE)
+                    : t(CARD_FORGE_TEXT_CONSTANT.SUBMIT_PAID_WITH_COST, {
+                        cost: forge.pricing?.nextCost.toLocaleString("id-ID") ?? 0,
+                      })}
+                </>
+              )}
+            </button>
           </div>
 
           {/* Sisi Kanan: Live Preview Visual (5 Kolom) */}

@@ -699,7 +699,7 @@ export class LeagueRepositoryImpl implements LeagueRepository {
         if (!final) throw AppError.conflict("Tidak ada pemenang untuk menyelesaikan league.");
         const eligiblePlayers = room.participants.filter((participant) =>
           participant.role === "PARTICIPANT" &&
-          store.users.some((user) => user.id === participant.userId && !user.isGuest)
+          store.users.some((user) => user.id === participant.userId)
         );
         if (eligiblePlayers.length >= NUSA_POINT_POLICY.leagueChampionMinimumPlayers &&
           eligiblePlayers.some((participant) => participant.userId === final.winnerId)) {

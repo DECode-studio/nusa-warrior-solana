@@ -10,7 +10,6 @@ import {
   UserDashboardHeading,
   UserDashboardKpiSection,
   UserDashboardMatchHistorySection,
-  UserGuestAlertBanner,
 } from "./components";
 import { USER_DASHBOARD_SEMANTIC_IDS } from "./constants/SemanticIdConstant";
 import { USER_DASHBOARD_TEXT_CONSTANT } from "./constants/TextConstant";
@@ -32,9 +31,6 @@ export function UserDashboardView(): React.ReactElement {
 
   return (
     <div id={USER_DASHBOARD_SEMANTIC_IDS.ROOT} className="space-y-6">
-      {/* Guest Alert Banner */}
-      <UserGuestAlertBanner isGuest={currentUser?.isGuest} />
-
       {/* Free Starter Pack Claim Reminder Banner */}
       <UserUnclaimedPackBanner />
 

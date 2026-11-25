@@ -10,9 +10,9 @@ import { CardVisual } from "@/client/presentation/components/CardVisual";
 import { CardDetailModal } from "@/client/presentation/components/CardDetailModal";
 import { UserFeedback } from "@/client/presentation/components/user";
 import { ROUTES } from "@/core/constants/routes";
-import boardDesktop from "../../../../../../../assets/board/board-desktop.png";
-import boardMobile from "../../../../../../../assets/board/board-mobile.png";
-import cardBackImage from "../../../../../../../assets/cards/nusantara-card.back-card.png";
+const BOARD_DESKTOP_SRC = "/assets/board/board-desktop.png";
+const BOARD_MOBILE_SRC = "/assets/board/board-mobile.png";
+const CARD_BACK_IMAGE = "/cards/nusantara-card.back-card.png";
 import {
   BattleArenaHeader,
   BattleAttackIndicator,
@@ -290,8 +290,8 @@ export function BattleArenaView(): React.ReactElement {
       id={BATTLE_SEMANTIC_IDS.ARENA_ROOT}
       className={`${styles.arenaBoard} battlefield-zero-scroll fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] flex-col justify-between overflow-hidden bg-surface-base text-white select-none`}
       style={{
-        "--battle-board-desktop": `url("${boardDesktop.src}")`,
-        "--battle-board-mobile": `url("${boardMobile.src}")`,
+        "--battle-board-desktop": `url("${BOARD_DESKTOP_SRC}")`,
+        "--battle-board-mobile": `url("${BOARD_MOBILE_SRC}")`,
       } as React.CSSProperties}
     >
       {error && (
@@ -587,7 +587,7 @@ export function BattleArenaView(): React.ReactElement {
             <Image
               key={item.instanceId}
               id={`${BATTLE_SEMANTIC_IDS.BOT_INSTRUMENT_SLOT_PREFIX}${item.instanceId}`}
-              src={cardBackImage}
+              src={CARD_BACK_IMAGE}
               alt=""
               width={400}
               height={560}
