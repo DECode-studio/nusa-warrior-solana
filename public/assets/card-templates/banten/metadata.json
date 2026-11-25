@@ -1,0 +1,89 @@
+{
+  "slug": "banten",
+  "kingdom": "BANTEN",
+  "width": 1024,
+  "height": 1505,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki - laki • Prajurit • Banten",
+      "text": "Laki - laki • Prajurit • Banten",
+      "bounds": [
+        339,
+        954,
+        683,
+        981
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Prajurit Banten",
+      "text": "Prajurit Banten",
+      "bounds": [
+        269,
+        855,
+        752,
+        925
+      ]
+    },
+    {
+      "name": "1.000",
+      "text": "1.000",
+      "bounds": [
+        212,
+        1083,
+        374,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        250,
+        1047,
+        326,
+        1068
+      ]
+    },
+    {
+      "name": "850",
+      "text": "850",
+      "bounds": [
+        689,
+        1083,
+        797,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        696,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Prajurit Kesultanan Banten adalah barisan tempur maritim\ndan darat yang terlatih mengintegrasikan taktik perang tradisional\ndengan teknologi persenjataan modern pada masanya.",
+      "bounds": [
+        213,
+        1273,
+        811,
+        1344
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+export const ADMIN_PAYMENT_GATEWAY_TEXT_CONSTANT = {
+  EYEBROW: "paymentGateway.eyebrow",
+  TITLE: "paymentGateway.title",
+  DESCRIPTION: "paymentGateway.description",
+  GLOBAL_TITLE: "paymentGateway.globalTitle",
+  GLOBAL_DESCRIPTION: "paymentGateway.globalDescription",
+  MODE_WARNING: "paymentGateway.modeWarning",
+  DEV: "paymentGateway.dev",
+  PROD: "paymentGateway.prod",
+  USERS_TITLE: "paymentGateway.usersTitle",
+  USERS_DESCRIPTION: "paymentGateway.usersDescription",
+  SEARCH_PLACEHOLDER: "paymentGateway.searchPlaceholder",
+  OVERRIDE_LABEL: "paymentGateway.overrideLabel",
+  FOLLOW_GLOBAL: "paymentGateway.followGlobal",
+  NO_USERS: "paymentGateway.noUsers",
+  LOADING: "paymentGateway.loading",
+  LOAD_ERROR: "paymentGateway.loadError",
+  SAVE_ERROR: "paymentGateway.saveError",
+  SAVED: "paymentGateway.saved",
+  ERROR_TITLE: "paymentGateway.errorTitle",
+  RETRY_BTN: "paymentGateway.retryBtn",
+} as const;
+

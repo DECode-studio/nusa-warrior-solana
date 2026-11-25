@@ -1,0 +1,41 @@
+export const USER_DASHBOARD_TEXT_CONSTANT = {
+  TITLE_KEY: "userPanel.dashboardTitle",
+  SUBTITLE_KEY: "userPanel.dashboardSubtitle",
+  WELCOME_PREFIX: "userDashboard.welcomePrefix",
+  DEFAULT_WARRIOR_NAME: "userDashboard.defaultWarriorName",
+
+  ACTION_BATTLE_LOBBY: "userDashboard.actionBattleLobby",
+  ACTION_BUILD_DECK: "userDashboard.actionBuildDeck",
+
+  STAT_COLLECTION_LABEL: "userDashboard.statCollectionLabel",
+  STAT_COLLECTION_DESC: "userDashboard.statCollectionDesc",
+  STAT_DECKS_LABEL: "userDashboard.statDecksLabel",
+  STAT_DECKS_DESC: "userDashboard.statDecksDesc",
+  STAT_WINRATE_LABEL: "userDashboard.statWinrateLabel",
+  STAT_WINRATE_DESC: "userDashboard.statWinrateDesc",
+  STAT_FAIRPLAY_LABEL: "userDashboard.statFairplayLabel",
+  STAT_FAIRPLAY_VAL: "userDashboard.statFairplayVal",
+  STAT_FAIRPLAY_DESC: "userDashboard.statFairplayDesc",
+
+  ERROR_TITLE: "userDashboard.errorTitle",
+  LOAD_ERROR: "userDashboard.loadError",
+  CARDS_VALUE: "userDashboard.cardsValue",
+  DECKS_VALUE: "userDashboard.decksValue",
+  ERROR_RETRY: "userDashboard.errorRetry",
+
+  FEATURE_TUTORIAL_TITLE: "userDashboard.featureTutorialTitle",
+  FEATURE_TUTORIAL_DESC: "userDashboard.featureTutorialDesc",
+  FEATURE_BATTLE_TITLE: "userDashboard.featureBattleTitle",
+  FEATURE_BATTLE_DESC: "userDashboard.featureBattleDesc",
+  FEATURE_DECKS_TITLE: "userDashboard.featureDecksTitle",
+  FEATURE_DECKS_DESC: "userDashboard.featureDecksDesc",
+  FEATURE_SHOP_TITLE: "userDashboard.featureShopTitle",
+  FEATURE_SHOP_DESC: "userDashboard.featureShopDesc",
+
+  HISTORY_TITLE: "userDashboard.historyTitle",
+  HISTORY_ACTION_LOBBY: "userDashboard.historyActionLobby",
+  HISTORY_VICTORY: "userDashboard.historyVictory",
+  HISTORY_DEFEAT: "userDashboard.historyDefeat",
+  HISTORY_EMPTY_TITLE: "userDashboard.historyEmptyTitle",
+  HISTORY_EMPTY_DESC: "userDashboard.historyEmptyDesc",
+} as const;

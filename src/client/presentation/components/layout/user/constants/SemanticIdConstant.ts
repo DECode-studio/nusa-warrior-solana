@@ -1,0 +1,16 @@
+export const USER_LAYOUT_SEMANTIC_IDS = {
+  ROOT: "nusa-warriors-user-console",
+  HEADER: "nusa-warriors-user-header",
+  SIDEBAR: "nusa-warriors-user-sidebar",
+  MOBILE_DRAWER: "nusa-warriors-user-mobile-drawer",
+  BRAND_LINK: "user-layout-brand-link",
+  ACCOUNT_STATUS: "user-layout-account-status",
+  NAV_LIST: "user-layout-nav-list",
+  NAV_ITEM_PREFIX: "user-layout-nav-item-",
+  LOCALE_SWITCH_BTN: "user-layout-locale-switch-btn",
+  RETURN_HOME_LINK: "user-layout-return-home-link",
+  LOGOUT_BTN: "user-layout-logout-btn",
+  MOBILE_TRIGGER: "user-layout-mobile-trigger",
+  AVATAR_BTN: "user-layout-avatar-btn",
+  AVATAR_DROPDOWN: "user-layout-avatar-dropdown",
+} as const;

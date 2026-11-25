@@ -1,0 +1,701 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PLAYER
+  CURATOR
+  ADMIN
+}
+
+enum CardType {
+  CHARACTER
+  INSTRUMENT
+}
+
+enum Kingdom {
+  MAJAPAHIT
+  PAJAJARAN
+  NUSANTARA_UMUM
+  DAHA_KADIRI
+  PORTUGIS
+  DEMAK_CIREBON
+  BANTEN
+}
+
+enum CharacterRole {
+  PEMIMPIN
+  PRAJURIT
+  PEMUKA
+  PERAJIN
+  UTUSAN
+}
+
+enum CharacterGender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum InstrumentEffectType {
+  BOOST_ATK
+  BOOST_DEF
+  BOOST_BOTH
+  ATK_AND_PENETRATE_DEF
+  DEF_AND_REDUCE_ATTACKER_ATK
+  DEBUFF_ENEMY_ATK
+  CONDITIONAL_ROLE_BOOST
+  ATTACK_BONUS_ON_STRIKE
+}
+
+enum VerificationStatus {
+  VERIFIED
+  VISUAL_INTERPRETATION
+  NEEDS_REVIEW
+}
+
+enum CardPublicationStatus {
+  ACTIVE
+  HIDDEN
+  WITHDRAWN
+}
+
+enum AssetApprovalStatus {
+  PLACEHOLDER
+  NEEDS_PERMISSION
+  APPROVED
+  WITHDRAWN
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+  REJECTED
+}
+
+enum CustomCardStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentMode {
+  DEV
+  PROD
+}
+
+enum ShopOrderPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
+model User {
+  id           String               @id @default(cuid())
+  email        String               @unique
+  name         String
+  googleId     String?              @unique
+  avatarUrl    String?
+  passwordHash String               @default("")
+  role         UserRole             @default(PLAYER)
+  isGuest      Boolean              @default(false)
+  lastActiveAt DateTime             @default(now())
+  hasClaimedStarterPack Boolean           @default(false)
+  paymentModeOverride PaymentMode?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  decks        Deck[]
+  matches      Match[]
+  battleSessions BattleSession[]
+  battleSessionsAsOpponent BattleSession[] @relation("BattleOpponent")
+  createdLeagues LeagueRoom[] @relation("LeagueCreator")
+  leagueEntries LeagueParticipant[]
+  quickMatchQueue QuickMatchQueueEntry?
+  shopOrders ShopOrder[]
+  topupOrders TopupOrder[]
+  auditLogs    CardAuditLog[]
+  ownedCards   UserCard[]
+  ledgerTransactions CardLedgerTransaction[]
+  cardEscrows CardEscrow[]
+  nusaPointTransactions NusaPointTransaction[]
+  storyProgress        StoryProgress[]
+  storyAssets          StoryMediaAsset[]
+  storyCampaignEdits   StoryCampaignContent[]
+  createdCards         Card[]                 @relation("UserCreatedCards")
+
+  @@index([isGuest, lastActiveAt])
+  @@map("users")
+}
+
+model AuthSession {
+  id               String   @id
+  userId           String
+  email            String
+  name             String
+  role             UserRole
+  isGuest          Boolean  @default(false)
+  refreshTokenHash String   @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model Card {
+  id                  String                 @id @default(cuid())
+  code                String                 @unique
+  slug                String                 @unique
+  name                String
+  cardType            CardType
+  kingdom             Kingdom
+  role                CharacterRole
+  secondaryRoles      CharacterRole[]
+  gender              CharacterGender?
+  baseAttack          Int                    @default(0)
+  baseDefense         Int                    @default(0)
+  effectName          String?
+  effectType          InstrumentEffectType?
+  effectDescriptionId String?
+  effectDescriptionEn String?
+  effectDescriptionZh String?
+  attackMod           Int                    @default(0)
+  strikeAttackBonus  Int                    @default(0)
+  defenseMod          Int                    @default(0)
+  enemyAttackMod      Int                    @default(0)
+  ignoreDefenseAmount Int                    @default(0)
+  affinityRole        CharacterRole?
+  affinityGender      CharacterGender?
+  affinityBonusAtk    Int                    @default(0)
+  affinityBonusDef    Int                    @default(0)
+  historicalSummaryId String
+  historicalSummaryEn String
+  historicalSummaryZh String
+  illustrationNote    String
+  sourceCitation      String
+  sourceUrl           String?
+  verificationStatus  VerificationStatus     @default(VISUAL_INTERPRETATION)
+  publicationStatus   CardPublicationStatus  @default(ACTIVE)
+  isCustom            Boolean                @default(false)
+  creatorId           String?
+  creator             User?                  @relation("UserCreatedCards", fields: [creatorId], references: [id], onDelete: SetNull)
+  customStatus        CustomCardStatus?
+  rejectionReason     String?
+  imagePath           String
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  assets              CardAsset[]
+  reports             CardCorrectionReport[]
+  auditLogs           CardAuditLog[]
+  deckCards           DeckCard[]
+  owners              UserCard[]
+  ledgerEntries       CardLedgerEntry[]
+  escrowItems         CardEscrowItem[]
+
+  @@index([isCustom, customStatus])
+  @@index([creatorId])
+  @@map("cards")
+}
+
+model CardAsset {
+  id                String              @id @default(cuid())
+  cardId            String
+  card              Card                @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  assetType         String              @default("ILLUSTRATION")
+  filePath          String
+  creator           String
+  rightsHolder      String
+  sourceOrigin      String
+  acquiredAt        DateTime            @default(now())
+  licenseType       String
+  commercialAllowed Boolean             @default(false)
+  creditText        String
+  approvalStatus    AssetApprovalStatus @default(APPROVED)
+
+  @@map("card_assets")
+}
+
+model CardCorrectionReport {
+  id              String       @id @default(cuid())
+  cardId          String
+  card            Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  reporterName    String
+  reporterEmail   String
+  issueType       String
+  description     String
+  suggestedSource String?
+  status          ReportStatus @default(OPEN)
+  reviewerNote    String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("card_correction_reports")
+}
+
+model CardAuditLog {
+  id            String   @id @default(cuid())
+  cardId        String
+  card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  actorId       String?
+  actor         User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  changeSummary String
+  previousState String
+  nextState     String
+  createdAt     DateTime @default(now())
+
+  @@map("card_audit_logs")
+}
+
+model Deck {
+  id          String     @id @default(cuid())
+  name        String
+  description String
+  isPreset    Boolean    @default(false)
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  cards       DeckCard[]
+
+  @@map("decks")
+}
+
+model DeckCard {
+  id       String @id @default(cuid())
+  deckId   String
+  deck     Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  cardId   String
+  card     Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  quantity Int    @default(1)
+
+  @@unique([deckId, cardId])
+  @@map("deck_cards")
+}
+
+model UserCard {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  source    String   @default("PURCHASE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, cardId])
+  @@index([userId])
+  @@map("user_cards")
+}
+
+model CardLedgerTransaction {
+  id             String            @id @default(cuid())
+  idempotencyKey String            @unique
+  type           String
+  referenceId    String?
+  actorUserId    String?
+  actor          User?             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  entries        CardLedgerEntry[]
+  escrow         CardEscrow?       @relation("EscrowReservation")
+  createdAt      DateTime          @default(now())
+
+  @@index([referenceId, type])
+  @@map("card_ledger_transactions")
+}
+
+model CardLedgerEntry {
+  id            String                 @id @default(cuid())
+  transactionId String
+  transaction   CardLedgerTransaction  @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  cardId        String
+  card          Card                   @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  accountType   String
+  accountId     String
+  quantity      Int
+  createdAt     DateTime               @default(now())
+
+  @@index([cardId, accountType, accountId])
+  @@index([transactionId])
+  @@map("card_ledger_entries")
+}
+
+model CardEscrow {
+  id                   String                 @id @default(cuid())
+  ownerUserId          String
+  owner                User                   @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  referenceType        String
+  referenceId          String
+  status               String                 @default("OPEN")
+  idempotencyKey       String                 @unique
+  reserveTransactionId String                 @unique
+  reserveTransaction   CardLedgerTransaction  @relation("EscrowReservation", fields: [reserveTransactionId], references: [id], onDelete: Restrict)
+  items                CardEscrowItem[]
+  expiresAt            DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@index([referenceType, referenceId, status])
+  @@index([ownerUserId, status])
+  @@map("card_escrows")
+}
+
+model CardEscrowItem {
+  id       String     @id @default(cuid())
+  escrowId String
+  escrow   CardEscrow @relation(fields: [escrowId], references: [id], onDelete: Restrict)
+  cardId   String
+  card     Card       @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  quantity Int
+
+  @@unique([escrowId, cardId])
+  @@map("card_escrow_items")
+}
+
+model ApiRateLimitBucket {
+  key       String   @id
+  tokens    Float
+  updatedAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("api_rate_limit_buckets")
+}
+
+model Match {
+  id            String   @id @default(cuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  deckName      String
+  botDifficulty String
+  winner        String
+  totalTurns    Int
+  durationSec   Int
+  battleLogJson String
+  createdAt     DateTime @default(now())
+
+  @@map("matches")
+}
+
+model BattleSession {
+  id            String   @id
+  createRequestKey String? @unique
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opponentUserId String?
+  opponentUser User? @relation("BattleOpponent", fields: [opponentUserId], references: [id], onDelete: Cascade)
+  leagueMatch LeagueMatch?
+  deckId        String
+  deckName      String
+  opponentDeckId String?
+  opponentDeckName String?
+  isQuickMatch Boolean @default(false)
+  playerDeckCardSlugsJson String? @db.Text
+  opponentDeckCardSlugsJson String? @db.Text
+  rewardCardSlug String?
+  storyKingdom   Kingdom?
+  storyMissionId String?
+  storyChoiceId  String?
+  botDifficulty String
+  rulesVersion  String   @default("rules-v1")
+  sequence      Int      @default(0)
+  status        String   @default("ACTIVE")
+  lastSeenAt    DateTime @default(now())
+  opponentLastSeenAt DateTime?
+  disconnectedAt DateTime?
+  opponentDisconnectedAt DateTime?
+  reconnectDeadlineAt DateTime?
+  opponentReconnectDeadlineAt DateTime?
+  turnDeadlineAt DateTime?
+  rngCommitment String?
+  rngSecret     String?  @db.Text
+  rngCounter    Int      @default(0)
+  rngDrawsJson  String   @default("[]") @db.Text
+  stateJson     String   @db.Text
+  eventsJson    String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, status, updatedAt])
+  @@index([opponentUserId, status, updatedAt])
+  @@map("battle_sessions")
+}
+
+model StoryProgress {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kingdom             Kingdom
+  completedMissionIds Json     @default("[]")
+  replayCounts        Json     @default("{}")
+  choices             Json     @default("{}")
+  claimedBattleIds    Json     @default("[]")
+  claimResults        Json     @default("{}")
+  endingSeen          Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, kingdom])
+  @@index([userId])
+  @@map("story_progress")
+}
+
+model StoryCampaignContent {
+  id          String   @id @default(cuid())
+  kingdom     Kingdom  @unique
+  content     Json
+  draftContent Json?
+  published   Boolean  @default(true)
+  version     Int      @default(1)
+  defaultContentVersion Int @default(0)
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("story_campaign_content")
+}
+
+model StoryMediaAsset {
+  id           String   @id @default(cuid())
+  sha256       String   @unique
+  fileName     String
+  mimeType     String
+  byteSize     Int
+  fileBytes    Bytes
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("story_media_assets")
+}
+
+model LeagueRoom {
+  id                    String   @id
+  creatorId             String
+  creator               User     @relation("LeagueCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  joinCode              String   @unique
+  isPublic              Boolean  @default(false)
+  status                String   @default("REGISTRATION_OPEN")
+  maxParticipants       Int?
+  registrationClosesAt  DateTime
+  startMode             String   @default("AUTO")
+  startDelayMinutes     Int      @default(3)
+  scheduledStartAt      DateTime?
+  manualStartDeadlineAt DateTime?
+  rulesJson             String   @db.Text
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  terminalAt            DateTime?
+  participants          LeagueParticipant[]
+  rounds                LeagueRound[]
+
+  @@index([isPublic, status, registrationClosesAt])
+  @@index([isPublic, status, terminalAt])
+  @@index([creatorId, status])
+  @@map("league_rooms")
+}
+
+model LeagueParticipant {
+  id                   String     @id
+  leagueId             String
+  league               LeagueRoom @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                 String     @default("PARTICIPANT")
+  status               String     @default("REGISTERED")
+  deckId               String?
+  stakeCardSlug        String?
+  reconnectDeadlineAt  DateTime?
+  joinedAt             DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  @@unique([leagueId, userId])
+  @@index([leagueId, role, status, joinedAt])
+  @@map("league_participants")
+}
+
+model LeagueRound {
+  id          String     @id
+  leagueId    String
+  league      LeagueRoom @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  roundNumber Int
+  status      String     @default("ACTIVE")
+  createdAt   DateTime   @default(now())
+  matches     LeagueMatch[]
+
+  @@unique([leagueId, roundNumber])
+  @@map("league_rounds")
+}
+
+model LeagueMatch {
+  id                  String          @id
+  roundId             String
+  round               LeagueRound     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  playerOneId         String
+  playerTwoId         String?
+  winnerId            String?
+  status              String          @default("ACTIVE")
+  battleSessionId     String?         @unique
+  battleSession       BattleSession?  @relation(fields: [battleSessionId], references: [id], onDelete: SetNull)
+  durationDeadlineAt  DateTime?
+  createdAt           DateTime        @default(now())
+  completedAt         DateTime?
+
+  @@index([roundId, status])
+  @@map("league_matches")
+}
+
+model QuickMatchQueueEntry {
+  id String @id
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deckId String
+  deckName String
+  battlePower Int
+  characterSlugsJson String @db.Text
+  instrumentSlugsJson String @db.Text
+  idempotencyKey String @unique
+  acceptedAt DateTime
+  status String @default("WAITING")
+  battleSessionId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt, battlePower])
+  @@map("quick_match_queue")
+}
+
+model StarterPack {
+  id             String               @id @default(cuid())
+  code           String               @unique
+  nameId         String
+  nameEn         String
+  nameZh         String
+  descriptionId  String
+  descriptionEn  String
+  descriptionZh  String
+  kingdomTheme   Kingdom
+  priceIdr       Int
+  cardSlugs      String[]
+  isFairPlaySafe Boolean              @default(true)
+  imagePath      String?
+  packType       String               @default("STARTER")
+  isStarter      Boolean              @default(false)
+  cardCount      Int                  @default(5)
+  orders         ShopOrder[]
+
+  @@map("starter_packs")
+}
+
+model ShopOrder {
+  id                  String                 @id @default(cuid())
+  referenceCode       String                 @unique
+  userId              String?
+  user                User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  starterPackId       String
+  starterPack         StarterPack            @relation(fields: [starterPackId], references: [id], onDelete: Cascade)
+  buyerName           String
+  buyerEmail          String
+  paymentMethod       String
+  amountIdr           Int
+  originalAmountIdr   Int                  @default(0)
+  pointsSpent         Int                  @default(0)
+  paymentStatus       ShopOrderPaymentStatus @default(PENDING)
+  paymentProvider     String                 @default("IPAYMU")
+  paymentMode         PaymentMode            @default(DEV)
+  gatewayReference    String?                @unique
+  paymentUrl          String?                @db.Text
+  paymentInstructions Json?
+  expiresAt           DateTime?
+  drawnCardSlugs      String[]               @default([])
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  paidAt              DateTime?
+
+  @@index([userId, createdAt])
+  @@index([paymentStatus, expiresAt])
+  @@map("shop_orders")
+}
+
+model TopupOrder {
+  id                  String                 @id @default(cuid())
+  referenceCode       String                 @unique
+  userId              String
+  user                User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyerName           String
+  buyerEmail          String
+  paymentMethod       String
+  paymentChannel      String?
+  amountIdr           Int
+  feeIdr              Int                    @default(500)
+  pointsAwarded       Int
+  paymentStatus       ShopOrderPaymentStatus @default(PENDING)
+  paymentProvider     String                 @default("MENU_KITA")
+  paymentMode         PaymentMode            @default(DEV)
+  gatewayReference    String?                @unique
+  paymentUrl          String?                @db.Text
+  paymentInstructions Json?
+  expiresAt           DateTime?
+  paidAt              DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([paymentStatus, expiresAt])
+  @@map("topup_orders")
+}
+
+model NusaPointTransaction {
+  id               String   @id
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount           Int
+  source           String
+  sourceId         String
+  opponentUserId   String?
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, source, sourceId])
+  @@index([userId, createdAt])
+  @@index([source, createdAt])
+  @@index([opponentUserId, createdAt])
+  @@map("nusa_point_transactions")
+}
+
+model PaymentGatewaySetting {
+  id              String      @id @default("global")
+  globalMode      PaymentMode @default(DEV)
+  updatedByUserId String?
+  updatedAt       DateTime    @updatedAt
+
+  @@map("payment_gateway_settings")
+}
+
+model TeamMember {
+  id           String   @id @default(cuid())
+  name         String
+  email        String
+  role         String
+  description  String   @db.Text
+  image        String   @db.Text
+  imagePositionX Int      @default(50)
+  imagePositionY Int      @default(50)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+  @@map("team_members")
+}
+
+

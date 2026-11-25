@@ -1,0 +1,15 @@
+export const LEAGUE_LOBBY_SEMANTIC_IDS = {
+  ROOT: "league-lobby-root",
+  HEADING: "league-lobby-heading",
+  ROOM_PANEL: "league-room-panel",
+  LEAVE_CONFIRM_MODAL: "league-leave-confirm-modal",
+  CANCEL_CONFIRM_MODAL: "league-cancel-confirm-modal",
+  CREATE_FORM: "league-create-form",
+  JOIN_CODE_FORM: "league-join-code-form",
+  JOIN_MODAL: "league-join-modal",
+  CREATE_MODAL: "league-create-modal",
+  SECTION_NAV: "league-section-nav",
+  MY_ROOMS: "league-my-rooms",
+  PUBLIC_ROOMS: "league-public-rooms",
+  BRACKET: "league-bracket",
+} as const;

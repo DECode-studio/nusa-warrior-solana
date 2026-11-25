@@ -1,0 +1,650 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "MothproofScript";
+  src: url("/fonts/MothproofScript.woff") format("woff"),
+       url("/fonts/MothproofScript.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Abril Fatface";
+  src: url("/fonts/AbrilFatface-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Abhaya Libre";
+  src: url("/fonts/AbhayaLibre-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-display: "Rajdhani", sans-serif;
+  --font-body: "Nunito Sans", sans-serif;
+  --font-sans: "Nunito Sans", sans-serif;
+  --font-mothproof: "MothproofScript", cursive;
+  --font-abril: "Abril Fatface", serif;
+  --font-abhaya: "Abhaya Libre", serif;
+
+  /* Primary Brand (Electric Indigo) */
+  --color-primary: #6766ff;
+  --color-primary-solid: #5856f2;
+  --color-primary-hover: #5856f2;
+  --color-primary-light: #a9a8ff;
+
+  /* Surfaces & Canvas */
+  --color-surface-base: #080220;
+  --color-surface: #07011f;
+  --color-surface-elevated: #0f0927;
+  --color-surface-muted: rgba(18, 11, 48, 0.7);
+
+  /* Accents */
+  --color-amber: #ff9f31;
+  --color-amber-light: #ffbd70;
+  --color-amber-hover: #f69408;
+
+  --color-emerald: #0db561;
+  --color-emerald-light: #46d995;
+  --color-emerald-hover: #37b884;
+
+  --color-cyan: #00f0ff;
+  --color-danger: #ef4444;
+  --color-danger-light: #ff8f8f;
+
+  /* Foreground / Text */
+  --color-fg: #ffffff;
+  --color-cream: #f8f5f0;
+  --color-muted: #cfcbe2;
+  --color-subtle: #a5a1b9;
+
+  /* Borders */
+  --color-border-subtle: rgba(103, 102, 255, 0.18);
+  --color-border-base: rgba(103, 102, 255, 0.28);
+  --color-border-strong: rgba(103, 102, 255, 0.55);
+}
+
+:root {
+  /* Intellio design system tokens (docs/DESIGN.md & excitech-profile) */
+  --theme-primary: #6766ff;
+  --theme-primary-solid: #5856f2;
+  --theme-color6: #0db561;
+  --theme-color4: #ff9f31;
+  --theme-color-light: #f8f5f0;
+  --color-8: #ffffff;
+  --color-1: #000000;
+  --color-4: #37b884;
+  --color-5: #f69408;
+
+  /* Excitech Signature Colors */
+  --intellio-bg: #080220;
+  --intellio-surface: #07011f;
+  --intellio-elevated: #0f0927;
+  --intellio-primary: #6766ff;
+  --intellio-primary-solid: #5856f2;
+  --intellio-amber: #ff9f31;
+  --intellio-emerald: #0db561;
+  --intellio-cyan: #00f0ff;
+  --intellio-cream: #f8f5f0;
+  --intellio-muted: #cfcbe2;
+
+  /* Typography tokens (Rajdhani display, Nunito Sans body) */
+  --font-display: "Rajdhani", sans-serif;
+  --font-body: "Nunito Sans", sans-serif;
+  --font-sans: "Nunito Sans", sans-serif;
+  /* Keep familiar Tailwind sizes predictable; use nc-type-* for page hierarchy. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+
+  /* Spacing & Radii */
+  --radius-sm: 40px;
+  --radius-full: 9999px;
+  --radius-card: 20px;
+  --radius-control: 12px;
+  --duration-base: 0.25s;
+
+  /* Dual-Theme Variables (Default Dark Excitech) */
+  --nc-bg: #080220;
+  --nc-surface: #07011f;
+  --nc-surface-elevated: #0f0927;
+  --nc-surface-muted: rgba(18, 11, 48, 0.7);
+  --nc-border: rgba(103, 102, 255, 0.28);
+  --nc-border-strong: rgba(103, 102, 255, 0.55);
+  --nc-fg: #ffffff;
+  --nc-fg-muted: #cfcbe2;
+  --nc-scrollbar-track: #07011f;
+  --nc-scrollbar-thumb: #6766ff;
+
+  color-scheme: dark;
+  accent-color: var(--theme-primary);
+}
+
+html {
+  background-color: var(--nc-bg);
+  color: var(--nc-fg);
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
+body {
+  background-color: var(--nc-bg);
+  color: var(--nc-fg);
+  font-family: var(--font-sans);
+  overflow-x: clip;
+}
+
+/* Make casual selection, long-press saving, and dragging of card art harder. */
+img[src*="/cards/"] {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+/* Excitech Signature Intellio Card */
+.intellio-card {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 11, 48, 0.94) 0%,
+    rgba(7, 1, 31, 0.98) 100%
+  );
+  border: 1px solid rgba(103, 102, 255, 0.28);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 20px 48px rgba(4, 1, 18, 0.55);
+  transition:
+    border-color 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.intellio-card:hover {
+  border-color: rgba(103, 102, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 24px 56px rgba(103, 102, 255, 0.18);
+}
+
+/* Intellio Pill Badge */
+.intellio-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(103, 102, 255, 0.15);
+  padding: 0.375rem 0.95rem;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-primary-light);
+}
+
+/* Intellio Outline Heading */
+.intellio-outline-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(103, 102, 255, 0.45);
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+/* Utility UI Classes */
+.heavy-section-deferred,
+.catalog-defer-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 720px;
+}
+
+details.intellio-accordion > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+details.intellio-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 3px;
+}
+
+.nc-page {
+  min-height: 100vh;
+  background-color: var(--nc-bg);
+  color: var(--nc-fg);
+}
+
+.nc-public-main {
+  min-height: 100vh;
+  padding-block: 6rem 5rem;
+}
+
+.nc-public-container {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.nc-public-container--narrow {
+  max-width: 64rem;
+}
+
+.nc-public-container--standard {
+  max-width: 72rem;
+}
+
+.nc-public-container--wide {
+  max-width: 80rem;
+}
+
+.nc-public-section {
+  padding-block: 3rem;
+}
+
+.nc-type-display {
+  font-size: clamp(2.5rem, 4.5vw, 4rem);
+  line-height: 1.04;
+}
+
+.nc-type-page-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.12;
+}
+
+.nc-type-section-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.2;
+}
+
+.nc-type-card-title {
+  font-size: 1.125rem;
+  line-height: 1.35;
+}
+
+.nc-type-body {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.nc-type-body-sm {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.nc-type-caption {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.nc-card-title {
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .nc-public-main {
+    padding-block: 7rem 6rem;
+  }
+
+  .nc-public-container {
+    padding-inline: 1.5rem;
+  }
+
+  .nc-public-section {
+    padding-block: 4rem;
+  }
+}
+
+.nc-panel {
+  background: var(--nc-surface);
+  border: 1px solid var(--nc-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 32px rgba(4, 1, 18, 0.35);
+}
+
+.nc-panel-hero {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 11, 48, 0.95) 0%,
+    rgba(7, 1, 31, 0.98) 100%
+  );
+  border: 1px solid rgba(103, 102, 255, 0.35);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 20px 48px rgba(4, 1, 18, 0.55);
+}
+
+.nc-panel-muted {
+  background: var(--nc-surface-muted);
+  border: 1px solid var(--nc-border);
+  border-radius: var(--radius-control);
+}
+
+.nc-btn-primary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #6766ff 0%, #5856f2 100%);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 1.5rem;
+  box-shadow: 0 8px 24px rgba(103, 102, 255, 0.35);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nc-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(103, 102, 255, 0.5);
+}
+
+.nc-btn-secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(15, 9, 39, 0.85);
+  border: 1px solid rgba(103, 102, 255, 0.4);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 1.25rem;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+html[data-theme="light"] .nc-btn-secondary {
+  background: #ffffff;
+  color: #080220;
+  border-color: rgba(103, 102, 255, 0.35);
+}
+
+.nc-btn-secondary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #6766ff;
+  background: rgba(103, 102, 255, 0.15);
+}
+
+.nc-btn-emerald {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: #0db561;
+  color: #000000;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 1.25rem;
+  box-shadow: 0 8px 24px rgba(13, 181, 97, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.nc-btn-emerald:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.nc-input {
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--nc-border);
+  background: var(--nc-surface-elevated);
+  padding: 0.5rem 0.75rem;
+  color: var(--nc-fg);
+  font-family: var(--font-sans);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nc-input:focus {
+  outline: none;
+  border-color: #6766ff;
+  box-shadow: 0 0 0 3px rgba(103, 102, 255, 0.25);
+}
+
+.nc-badge-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 6px;
+  background: rgba(103, 102, 255, 0.15);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary-light);
+}
+
+.nc-badge-emerald {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 6px;
+  background: rgba(13, 181, 97, 0.15);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-emerald-light);
+}
+
+.nc-badge-amber {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 6px;
+  background: rgba(255, 159, 49, 0.15);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-amber-light);
+}
+
+/* ====================================================================
+   3D DICE ROLL SYSTEM (Adapted from Nexa Animation Reference)
+   ==================================================================== */
+.dice-3d-viewport {
+  perspective: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.dice-3d-cube {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  transform-style: preserve-3d;
+  transition: transform 1.2s cubic-bezier(0.22, 1.6, 0.36, 1);
+}
+
+.dice-3d-cube.is-rolling {
+  animation: dice-tumble-3d 0.85s linear infinite;
+}
+
+@keyframes dice-tumble-3d {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  25% {
+    transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg);
+  }
+  50% {
+    transform: rotateX(360deg) rotateY(180deg) rotateZ(180deg);
+  }
+  75% {
+    transform: rotateX(540deg) rotateY(270deg) rotateZ(225deg);
+  }
+  100% {
+    transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg);
+  }
+}
+
+.dice-face-3d {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 10px;
+  box-sizing: border-box;
+  background: linear-gradient(145deg, #1f143a 0%, #100826 60%, #08021c 100%);
+  border: 2px solid #6766ff;
+  box-shadow:
+    inset 0 0 16px rgba(103, 102, 255, 0.4),
+    0 0 20px rgba(103, 102, 255, 0.3);
+}
+
+.dice-face-player {
+  border-color: #ff9f31;
+  box-shadow:
+    inset 0 0 16px rgba(255, 159, 49, 0.4),
+    0 0 20px rgba(255, 159, 49, 0.35);
+}
+
+.dice-face-bot {
+  border-color: #ff5252;
+  box-shadow:
+    inset 0 0 16px rgba(255, 82, 82, 0.4),
+    0 0 20px rgba(255, 82, 82, 0.35);
+}
+
+.dice-pip-3d {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 60% 60%, #ffffff 0%, #d4cfc7 70%, #a8a090 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.6),
+    0 0 6px rgba(255, 255, 255, 0.8);
+  align-self: center;
+  justify-self: center;
+}
+
+.dice-pip-player {
+  background: radial-gradient(circle at 60% 60%, #ffe29a 0%, #ff9f31 70%, #d46500 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(255, 159, 49, 0.9);
+}
+
+.dice-pip-bot {
+  background: radial-gradient(circle at 60% 60%, #ffb4b4 0%, #ff5252 70%, #b81414 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(255, 82, 82, 0.9);
+}
+
+/* 3D Cube Face Positions (depth = 45px) */
+.dice-f-1 { transform: rotateY(0deg) translateZ(45px); }
+.dice-f-2 { transform: rotateY(90deg) translateZ(45px); }
+.dice-f-3 { transform: rotateY(180deg) translateZ(45px); }
+.dice-f-4 { transform: rotateY(-90deg) translateZ(45px); }
+.dice-f-5 { transform: rotateX(90deg) translateZ(45px); }
+.dice-f-6 { transform: rotateX(-90deg) translateZ(45px); }
+
+/* Final Rotations for Result 1-6 */
+.show-face-1 { transform: rotateX(0deg) rotateY(0deg); }
+.show-face-2 { transform: rotateX(0deg) rotateY(-90deg); }
+.show-face-3 { transform: rotateX(0deg) rotateY(-180deg); }
+.show-face-4 { transform: rotateX(0deg) rotateY(90deg); }
+.show-face-5 { transform: rotateX(-90deg) rotateY(0deg); }
+.show-face-6 { transform: rotateX(90deg) rotateY(0deg); }
+
+/* ====================================================================
+   BATTLEFIELD ZERO-SCROLL SHELL (Nexa Reference)
+   ==================================================================== */
+.battlefield-zero-scroll {
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at 50% 50%, rgba(20, 11, 48, 0.85) 0%, #080220 100%);
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* ====================================================================
+   BASE MODAL & BOTTOM SHEET ANIMATIONS
+   ==================================================================== */
+@keyframes nc-modal-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes nc-bottomsheet-enter {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-nc-modal {
+  animation: nc-modal-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-nc-bottomsheet {
+  animation: nc-bottomsheet-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes story-scene-in {
+  from {
+    opacity: 0.72;
+    transform: scale(1.035);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[story-scene-in_900ms_ease-out\] {
+    animation: none;
+  }
+}
+
