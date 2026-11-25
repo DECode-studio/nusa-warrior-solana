@@ -1,0 +1,13 @@
+| No. | Nama instrumen | Konteks budaya dan catatan sejarah | Afinitas | Efek kartu |
+|---|---|---|---|---|
+| 01 | **Padahi** | Istilah *padahi* tercatat dalam Prasasti Poh tahun 905 M. Ini bukti instrumen dari Jawa Kuno, tetapi belum cukup untuk mengaitkannya secara khusus dengan Majapahit atau Pajajaran. ([Direktorat Pelindungan Kebudayaan][1]) | Prajurit | **Genderang Perang** — satu Prajurit mendapat **+250 Attack** sampai giliran berakhir. |
+| 02 | **Rêgang** | *Rêgang* disebut dalam Prasasti Poh dan dijelaskan sebagai simbal. Kartu ini mewakili bunyi penanda dalam tradisi musik Jawa Kuno. ([Direktorat Pelindungan Kebudayaan][1]) | Pemuka | **Tanda Siaga** — satu karakter mendapat **+250 Defence** sampai giliran berakhir. |
+| 03 | **Tuwung** | *Tuwung* juga tercatat dalam Prasasti Poh. Jenis dan bentuk instrumennya belum cukup jelas dari sumber yang dirujuk, jadi ilustrasinya sebaiknya ditandai sebagai **rekonstruksi artistik**, bukan bentuk artefak yang pasti. ([Direktorat Pelindungan Kebudayaan][1]) | Utusan | **Seruan Penghubung** — satu karakter mendapat **+200 Attack dan +200 Defence** sampai giliran berakhir. |
+| 04 | **Kendang** | Kendang digunakan dalam berbagai tradisi gamelan Jawa dan Sunda. Gamelan sendiri mencakup instrumen perkusi, gong, alat gesek, dan seruling; bentuk ansambel berbeda menurut tradisi dan daerah. ([UNESCO Intangible Cultural Heritage][2]) | Prajurit | **Irama Penggerak** — satu Prajurit mendapat **+150 Attack**. Jika menyerang pada giliran ini, serangannya mengabaikan **100 Defence** target saat membandingkan nilai. |
+| 05 | **Goong Renteng** | Warisan budaya dari Jawa Barat. Catatan Kemdikbud menyebut keberadaannya paling tidak sejak abad ke-16; kartu ini **tidak menyatakan bahwa bentuk ansambel yang dikenal sekarang pasti sama persis dengan musik istana Pajajaran**. ([budaya.data.kemdikbud.go.id][3]) | Pemimpin | **Gema Penjaga** — satu karakter mendapat **+300 Defence** sampai giliran berakhir. Jika karakter itu menjadi target serangan, efek tetap berlaku sampai perbandingan Attack–Defence selesai. |
+
+[1]: https://kebudayaan.kemdikbud.go.id/dpk/nekara-prasasti-gandasuli-hingga-relief-yang-bercerita-tentang-musik/?utm_source=chatgpt.com "Nekara, Prasasti Gandasuli Hingga Relief yang Bercerita Tentang Musik"
+
+[2]: https://ich.unesco.org/en/RL/gamelan-01607?utm_source=chatgpt.com "Gamelan"
+
+[3]: https://budaya.data.kemdikbud.go.id/wbtb/objek/AA001635?utm_source=chatgpt.com "Warisan Budaya"
