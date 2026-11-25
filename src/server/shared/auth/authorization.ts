@@ -5,7 +5,7 @@ import { getCurrentSession, type SessionPayload } from "./session";
 export async function requirePlayerSession(): Promise<SessionPayload> {
   const session = await getCurrentSession();
   if (!session) {
-    throw AppError.unauthorized("Silakan masuk dengan Google untuk melanjutkan.");
+    throw AppError.unauthorized("Silakan hubungkan dompet Solana untuk melanjutkan.");
   }
   if (session.role !== "PLAYER") {
     throw AppError.forbidden("Akses ini hanya tersedia untuk akun pemain.");
@@ -27,10 +27,7 @@ export async function requireAdminSession(): Promise<SessionPayload> {
 export async function requireAuthSession(): Promise<SessionPayload> {
   const session = await getCurrentSession();
   if (!session) {
-    throw AppError.unauthorized("Silakan masuk dengan akun Anda untuk melanjutkan.");
-  }
-  if (session.isGuest) {
-    throw AppError.forbidden("Mode tamu tidak dapat menggunakan fitur ini. Silakan hubungkan akun Google Anda.");
+    throw AppError.unauthorized("Silakan hubungkan dompet Solana Anda untuk melanjutkan.");
   }
   return session;
 }

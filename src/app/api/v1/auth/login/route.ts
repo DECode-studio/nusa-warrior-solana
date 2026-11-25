@@ -1,9 +1,6 @@
 import { cookies } from "next/headers";
 import { z } from "zod";
-import {
-  getGoogleOAuthConfig,
-  loginWithCredentialsUseCase,
-} from "@/server/modules/auth/application/auth.usecase";
+import { loginWithCredentialsUseCase } from "@/server/modules/auth/application/auth.usecase";
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_COOKIE_NAME,
@@ -24,20 +21,6 @@ const loginRequestSchema = z.object({
   username: z.string().max(128).optional(),
   password: z.string().max(256).optional(),
 });
-
-export async function GET(request: Request): Promise<Response> {
-  try {
-    const config = getGoogleOAuthConfig();
-    return okResponse({
-      provider: "GOOGLE_SSO",
-      loginUrl: "/api/v1/auth/google",
-      callbackUrl: config.redirectUri,
-      isConfigured: config.isConfigured,
-    });
-  } catch (error: unknown) {
-    return handleRouteError(error, request);
-  }
-}
 
 export async function POST(request: Request): Promise<Response> {
   try {
