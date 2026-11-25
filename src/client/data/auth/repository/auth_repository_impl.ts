@@ -2,8 +2,11 @@ import { inject, injectable } from "@needle-di/core";
 import type {
   AdminUserRecordEntity,
   AdminUserDetailEntity,
-  GoogleSsoConfigEntity,
   LoginCredentialsRequest,
+  SolanaNonceResponse,
+  SolanaRegisterRequest,
+  SolanaVerifyRequest,
+  SolanaVerifyResultEntity,
   UpdateAdminUserRoleRequest,
   UpdateCardCurationRequest,
   UpdateReportStatusRequest,
@@ -40,13 +43,30 @@ export class AuthRepositoryImpl implements AuthRepository {
     return mapUserModelToEntity(model);
   }
 
-  public async getGoogleSsoConfig(): Promise<GoogleSsoConfigEntity> {
-    return this.remoteDataSource.getGoogleSsoConfig();
+  public async requestSolanaNonce(
+    walletAddress: string
+  ): Promise<SolanaNonceResponse> {
+    return this.remoteDataSource.requestSolanaNonce(walletAddress);
   }
 
-  public async loginAsGuest(): Promise<UserEntity> {
-    const model = await this.remoteDataSource.loginAsGuest();
-    return mapUserModelToEntity(model);
+  public async verifySolanaSignature(
+    request: SolanaVerifyRequest
+  ): Promise<SolanaVerifyResultEntity> {
+    const res = await this.remoteDataSource.verifySolanaSignature(request);
+    if (res.status === "NEEDS_NICKNAME") {
+      return res;
+    }
+    return {
+      status: "AUTHENTICATED",
+      user: mapUserModelToEntity(res.user),
+    };
+  }
+
+  public async completeSolanaRegistration(
+    request: SolanaRegisterRequest
+  ): Promise<UserEntity> {
+    const res = await this.remoteDataSource.completeSolanaRegistration(request);
+    return mapUserModelToEntity(res.user);
   }
 
   public async loginWithCredentials(

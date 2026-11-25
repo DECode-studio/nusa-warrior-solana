@@ -18,10 +18,10 @@ export const PUBLIC_LOGIN_SEMANTIC_IDS = {
   // Player login
   PLAYER_SECTION: "public-login-player-section",
   PLAYER_HEADING: "public-login-player-heading",
-  GOOGLE_LOGIN_BTN: "public-login-google-btn",
-  GUEST_LOGIN_BTN: "public-login-guest-btn",
-  GUEST_DISCLAIMER: "public-login-guest-disclaimer",
-  SSO_UNAVAILABLE_NOTICE: "public-login-sso-unavailable-notice",
+  SOLANA_LOGIN_BTN: "public-login-solana-btn",
+  NICKNAME_FORM: "public-login-nickname-form",
+  NICKNAME_INPUT: "public-login-nickname-input",
+  NICKNAME_SUBMIT_BTN: "public-login-nickname-submit-btn",
 
   // Divider
   DIVIDER_CREDENTIALS: "public-login-divider-credentials",

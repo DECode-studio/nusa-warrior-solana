@@ -1,7 +1,9 @@
 import { injectable } from "@needle-di/core";
 import type {
-  GoogleSsoConfigEntity,
   LoginCredentialsRequest,
+  SolanaNonceResponse,
+  SolanaRegisterRequest,
+  SolanaVerifyRequest,
   UpdateAdminUserRoleRequest,
   UpdateCardCurationRequest,
   UpdateReportStatusRequest,
@@ -22,18 +24,47 @@ export interface AdminUserDetailApiModel {
   decks: DeckApiModel[];
 }
 
+export type SolanaVerifyApiResponse =
+  | {
+      status: "AUTHENTICATED";
+      user: UserApiModel;
+    }
+  | {
+      status: "NEEDS_NICKNAME";
+      walletAddress: string;
+    };
+
 @injectable()
 export class AuthRemoteDataSource {
   public async getCurrentUser(): Promise<UserApiModel | null> {
     return apiClient.get<UserApiModel | null>(API_ROUTES.AUTH.ME);
   }
 
-  public async getGoogleSsoConfig(): Promise<GoogleSsoConfigEntity> {
-    return apiClient.get<GoogleSsoConfigEntity>(API_ROUTES.AUTH.LOGIN);
+  public async requestSolanaNonce(
+    walletAddress: string
+  ): Promise<SolanaNonceResponse> {
+    return apiClient.post<SolanaNonceResponse, { walletAddress: string }>(
+      API_ROUTES.AUTH.SOLANA_NONCE,
+      { walletAddress }
+    );
   }
 
-  public async loginAsGuest(): Promise<UserApiModel> {
-    return apiClient.post<UserApiModel>(API_ROUTES.AUTH.GUEST);
+  public async verifySolanaSignature(
+    request: SolanaVerifyRequest
+  ): Promise<SolanaVerifyApiResponse> {
+    return apiClient.post<SolanaVerifyApiResponse, SolanaVerifyRequest>(
+      API_ROUTES.AUTH.SOLANA_VERIFY,
+      request
+    );
+  }
+
+  public async completeSolanaRegistration(
+    request: SolanaRegisterRequest
+  ): Promise<{ status: "AUTHENTICATED"; user: UserApiModel }> {
+    return apiClient.post<
+      { status: "AUTHENTICATED"; user: UserApiModel },
+      SolanaRegisterRequest
+    >(API_ROUTES.AUTH.SOLANA_REGISTER, request);
   }
 
   public async loginWithCredentials(

@@ -7,7 +7,7 @@ import type {
 export interface PaymentGatewayUserApiModel {
   userId: string;
   name: string;
-  email: string;
+  walletAddress: string | null;
   role: string;
   paymentModeOverride: PaymentGatewayMode | null;
 }
@@ -29,7 +29,7 @@ export function toPaymentGatewayUserEntity(
   return {
     userId: model.userId,
     name: model.name,
-    email: model.email,
+    walletAddress: model.walletAddress ?? null,
     role: model.role,
     paymentModeOverride: model.paymentModeOverride,
   };

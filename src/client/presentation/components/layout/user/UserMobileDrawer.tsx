@@ -181,23 +181,10 @@ export function UserMobileDrawer({
             savedDecksCount={savedDecksCount}
             onNavigate={onClose}
             variant="drawer"
-            isGuest={isGuest}
           />
         </div>
 
         <div className="pt-4 border-t border-white/10 flex flex-col gap-2.5">
-          {/* Guest Account Link CTA in Mobile Drawer */}
-          {isGuest && (
-            <a
-              href={`${API_ROUTES.AUTH.GOOGLE}?action=link&lang=${encodeURIComponent(locale)}`}
-              onClick={onClose}
-              className="flex items-center justify-center gap-2 rounded-[40px] border border-amber-400/40 bg-amber-500/20 px-3.5 py-2.5 font-display text-xs font-bold text-amber-200 transition-all hover:bg-amber-500/30 hover:text-white"
-            >
-              <Link2 className="h-4 w-4" />
-              <span>Tautkan Akun Google</span>
-            </a>
-          )}
-
           {/* SFX & Gamelan Music Audio Control Bar */}
           <div className="flex items-center justify-between rounded-[40px] border border-white/10 bg-white/[0.03] px-3.5 py-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-[#F8F5F0]/80">

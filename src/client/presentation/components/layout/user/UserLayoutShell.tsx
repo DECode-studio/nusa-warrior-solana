@@ -37,10 +37,9 @@ export function UserLayoutShell({
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
   const [savedDecksCount, setSavedDecksCount] = useState<number | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userWalletAddress, setUserWalletAddress] = useState<string | null>(null);
   const [userPoints, setUserPoints] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [isGuest, setIsGuest] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
 
@@ -55,10 +54,9 @@ export function UserLayoutShell({
       ]);
       if (me) {
         setUserName(me.name ?? null);
-        setUserEmail(me.email ?? null);
+        setUserWalletAddress(me.walletAddress ?? null);
         setUserPoints(me.nusaPoints ?? 0);
         setAvatarUrl(me.avatarUrl ?? null);
-        setIsGuest(Boolean(me.isGuest));
       }
       setSavedDecksCount(decks.filter((deck) => !deck.isPreset && !deck.isTemporary).length);
 
@@ -111,7 +109,6 @@ export function UserLayoutShell({
       <UserSidebar
         savedDecksCount={savedDecksCount}
         userName={userName ?? t(USER_LAYOUT_TEXT_CONSTANT.DEFAULT_WARRIOR_NAME)}
-        isGuest={isGuest}
         isLoggingOut={isLoggingOut}
         onLogout={handleLogout}
         onOpenTourModal={openTrackSelectModal}
@@ -123,7 +120,6 @@ export function UserLayoutShell({
         onClose={() => setIsMobileDrawerOpen(false)}
         savedDecksCount={savedDecksCount}
         userName={userName ?? t(USER_LAYOUT_TEXT_CONSTANT.DEFAULT_WARRIOR_NAME)}
-        isGuest={isGuest}
         isLoggingOut={isLoggingOut}
         onLogout={handleLogout}
         onOpenTourModal={openTrackSelectModal}
@@ -138,9 +134,8 @@ export function UserLayoutShell({
           onRefresh={() => void fetchUserConsoleSummary()}
           isLoggingOut={isLoggingOut}
           onLogout={handleLogout}
-          isGuest={isGuest}
           userName={userName}
-          userEmail={userEmail}
+          userWalletAddress={userWalletAddress}
           userPoints={userPoints}
           avatarUrl={avatarUrl}
           onOpenTourModal={openTrackSelectModal}

@@ -1,100 +1,143 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { GoogleSsoConfigEntity } from "@/client/domain/auth/entity/user_entity";
-import { API_ROUTES } from "@/core/constants/api-routes";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import bs58 from "bs58";
 import { ROUTES } from "@/core/constants/routes";
 import { getService } from "@/core/di/container";
 import { AUTH_USECASE_TOKEN } from "@/core/di/tokens";
 import { useTranslator } from "@/core/translator";
 
 export interface UseUserLoginReturn {
-  readonly ssoConfig: GoogleSsoConfigEntity | null;
+  readonly connected: boolean;
+  readonly walletAddress: string | null;
+  readonly walletName: string | null;
   readonly loading: boolean;
-  readonly guestLoading: boolean;
+  readonly needsNickname: boolean;
+  readonly nickname: string;
+  readonly setNickname: (value: string) => void;
   readonly errorMsg: string | null;
-  readonly startGoogleSignIn: () => void;
-  readonly startGuestSignIn: () => Promise<void>;
+  readonly startSolanaSignIn: () => Promise<void>;
+  readonly submitNickname: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  readonly disconnectWallet: () => Promise<void>;
 }
 
 export function useUserLogin(): UseUserLoginReturn {
   const router = useRouter();
   const { locale, t } = useTranslator();
-  const searchParams = useSearchParams();
-  const [ssoConfig, setSsoConfig] = useState<GoogleSsoConfigEntity | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [guestLoading, setGuestLoading] = useState(false);
+  const { publicKey, connected, wallet, signMessage, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
+
+  const [loading, setLoading] = useState(false);
+  const [needsNickname, setNeedsNickname] = useState(false);
+  const [nickname, setNickname] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const pendingSignRef = useRef(false);
 
-  useEffect(() => {
-    const queryError = searchParams.get("error");
-    if (queryError === "google_oauth_not_configured") {
-      setErrorMsg(t("login.googleNotConfigured"));
-    } else if (queryError === "invalid_oauth_state") {
-      setErrorMsg(t("login.googleSessionExpired"));
-    } else if (queryError === "access_denied") {
-      setErrorMsg(t("login.googleAccessDenied"));
-    } else if (queryError === "google_link_conflict") {
-      setErrorMsg(t("login.googleLinkConflict"));
-    } else if (queryError) {
-      setErrorMsg(t("login.googleAuthFailed"));
-    }
-  }, [searchParams, t]);
+  const walletAddress = publicKey ? publicKey.toBase58() : null;
+  const walletName = wallet?.adapter.name ?? null;
 
-  useEffect(() => {
-    let active = true;
-    const loadConfig = async (): Promise<void> => {
-      try {
-        const config = await getService(AUTH_USECASE_TOKEN).getGoogleSsoConfig();
-        if (active) setSsoConfig(config);
-      } catch {
-        if (active) {
-          setErrorMsg(t("login.googleStatusUnavailable"));
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void loadConfig();
-    return () => {
-      active = false;
-    };
-  }, [t]);
-
-  const startGoogleSignIn = useCallback((): void => {
-    setErrorMsg(null);
-    if (!ssoConfig?.isConfigured) {
-      setErrorMsg(t("login.googleNotConfigured"));
+  const signAndVerify = useCallback(async (): Promise<void> => {
+    if (!publicKey) return;
+    if (!signMessage) {
+      setErrorMsg(t("login.walletSignUnsupported"));
       return;
     }
-    window.location.href = `${API_ROUTES.AUTH.GOOGLE}?lang=${encodeURIComponent(locale)}`;
-  }, [locale, ssoConfig, t]);
 
-  const startGuestSignIn = useCallback(async (): Promise<void> => {
     setErrorMsg(null);
-    setGuestLoading(true);
+    setLoading(true);
     try {
+      const address = publicKey.toBase58();
       const authUseCase = getService(AUTH_USECASE_TOKEN);
-      await authUseCase.loginAsGuest();
+      const challenge = await authUseCase.requestSolanaNonce(address);
+      const messageBytes = new TextEncoder().encode(challenge.message);
+      const signatureBytes = await signMessage(messageBytes);
+      const signature = bs58.encode(signatureBytes);
+
+      const result = await authUseCase.verifySolanaSignature({
+        walletAddress: address,
+        signature,
+      });
+
+      if (result.status === "NEEDS_NICKNAME") {
+        setNeedsNickname(true);
+        return;
+      }
+
       router.push(ROUTES.USER_DASHBOARD(locale));
     } catch (err: unknown) {
       const message =
-        err instanceof Error
-          ? err.message
-          : t("login.guestLoginFailed");
+        err instanceof Error ? err.message : t("login.solanaAuthFailed");
       setErrorMsg(message);
     } finally {
-      setGuestLoading(false);
+      setLoading(false);
     }
-  }, [locale, router, t]);
+  }, [locale, publicKey, router, signMessage, t]);
+
+  useEffect(() => {
+    if (pendingSignRef.current && connected && publicKey && signMessage) {
+      pendingSignRef.current = false;
+      void signAndVerify();
+    }
+  }, [connected, publicKey, signAndVerify, signMessage]);
+
+  const startSolanaSignIn = useCallback(async (): Promise<void> => {
+    setErrorMsg(null);
+    if (!connected || !publicKey) {
+      pendingSignRef.current = true;
+      setVisible(true);
+      return;
+    }
+    await signAndVerify();
+  }, [connected, publicKey, setVisible, signAndVerify]);
+
+  const submitNickname = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+      event.preventDefault();
+      const trimmed = nickname.trim();
+      if (trimmed.length < 2 || trimmed.length > 32) {
+        setErrorMsg(t("login.nicknameValidation"));
+        return;
+      }
+
+      setErrorMsg(null);
+      setLoading(true);
+      try {
+        const authUseCase = getService(AUTH_USECASE_TOKEN);
+        await authUseCase.completeSolanaRegistration({ nickname: trimmed });
+        router.push(ROUTES.USER_DASHBOARD(locale));
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : t("login.solanaAuthFailed");
+        setErrorMsg(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [locale, nickname, router, t]
+  );
+
+  const disconnectWallet = useCallback(async (): Promise<void> => {
+    pendingSignRef.current = false;
+    setNeedsNickname(false);
+    setNickname("");
+    setErrorMsg(null);
+    await disconnect();
+  }, [disconnect]);
 
   return {
-    ssoConfig,
+    connected,
+    walletAddress,
+    walletName,
     loading,
-    guestLoading,
+    needsNickname,
+    nickname,
+    setNickname,
     errorMsg,
-    startGoogleSignIn,
-    startGuestSignIn,
+    startSolanaSignIn,
+    submitNickname,
+    disconnectWallet,
   };
 }

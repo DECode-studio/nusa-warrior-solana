@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import React from "react";
+import { SolanaWalletProvider } from "@/client/presentation/components/providers/SolanaWalletProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,7 +47,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[#080220] text-white antialiased">
-        {children}
+        <SolanaWalletProvider>{children}</SolanaWalletProvider>
       </body>
     </html>
   );

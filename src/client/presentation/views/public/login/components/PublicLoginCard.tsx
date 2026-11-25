@@ -12,12 +12,17 @@ import { PublicLoginCredentialsForm } from "./PublicLoginCredentialsForm";
 import { PublicLoginPlayerSection } from "./PublicLoginPlayerSection";
 
 export interface PublicLoginCardProps {
+  readonly connected: boolean;
+  readonly walletAddress: string | null;
+  readonly walletName: string | null;
   readonly userLoading: boolean;
-  readonly guestLoading?: boolean;
-  readonly isSsoConfigured: boolean;
+  readonly needsNickname: boolean;
+  readonly nickname: string;
+  readonly onNicknameChange: (value: string) => void;
   readonly userErrorMsg: string | null;
-  readonly onGoogleSignIn: () => void;
-  readonly onGuestSignIn?: () => void;
+  readonly onSolanaSignIn: () => void;
+  readonly onSubmitNickname: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  readonly onDisconnectWallet: () => void;
   readonly credentialsUsername: string;
   readonly onCredentialsUsernameChange: (value: string) => void;
   readonly credentialsPassword: string;
@@ -30,12 +35,17 @@ export interface PublicLoginCardProps {
 }
 
 export function PublicLoginCard({
+  connected,
+  walletAddress,
+  walletName,
   userLoading,
-  guestLoading,
-  isSsoConfigured,
+  needsNickname,
+  nickname,
+  onNicknameChange,
   userErrorMsg,
-  onGoogleSignIn,
-  onGuestSignIn,
+  onSolanaSignIn,
+  onSubmitNickname,
+  onDisconnectWallet,
   credentialsUsername,
   onCredentialsUsernameChange,
   credentialsPassword,
@@ -86,11 +96,16 @@ export function PublicLoginCard({
 
         {/* Player Login Section */}
         <PublicLoginPlayerSection
+          connected={connected}
+          walletAddress={walletAddress}
+          walletName={walletName}
           loading={userLoading}
-          guestLoading={guestLoading}
-          isConfigured={isSsoConfigured}
-          onGoogleSignIn={onGoogleSignIn}
-          onGuestSignIn={onGuestSignIn}
+          needsNickname={needsNickname}
+          nickname={nickname}
+          onNicknameChange={onNicknameChange}
+          onSolanaSignIn={onSolanaSignIn}
+          onSubmitNickname={onSubmitNickname}
+          onDisconnectWallet={onDisconnectWallet}
         />
 
         {/* Divider */}

@@ -14,10 +14,9 @@ export type UserRoleValue = UserRole;
 
 export interface UserEntity {
   userId: string;
-  email: string;
+  walletAddress: string | null;
   name: string;
   role: UserRole;
-  isGuest?: boolean;
   hasClaimedStarterPack?: boolean;
   avatarUrl?: string | null;
   nusaPoints?: number;
@@ -25,10 +24,9 @@ export interface UserEntity {
 
 export interface AdminUserRecordEntity {
   id: string;
-  email: string;
+  walletAddress: string | null;
   name: string;
   role: UserRole;
-  isGuest?: boolean;
   createdAt: string;
 }
 
@@ -49,11 +47,29 @@ export interface UpdateAdminUserRoleRequest {
   role: UserRole;
 }
 
-export interface GoogleSsoConfigEntity {
-  provider: "GOOGLE_SSO";
-  loginUrl: string;
-  callbackUrl: string;
-  isConfigured: boolean;
+export interface SolanaNonceResponse {
+  walletAddress: string;
+  nonce: string;
+  message: string;
+}
+
+export interface SolanaVerifyRequest {
+  walletAddress: string;
+  signature: string;
+}
+
+export type SolanaVerifyResultEntity =
+  | {
+      status: "AUTHENTICATED";
+      user: UserEntity;
+    }
+  | {
+      status: "NEEDS_NICKNAME";
+      walletAddress: string;
+    };
+
+export interface SolanaRegisterRequest {
+  nickname: string;
 }
 
 export interface UpdateCardCurationRequest {

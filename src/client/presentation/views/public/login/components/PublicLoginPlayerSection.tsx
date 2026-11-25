@@ -1,26 +1,41 @@
 "use client";
 
 import React from "react";
-import { Clock, Gamepad2 } from "lucide-react";
+import { LogOut, UserCheck, Wallet } from "lucide-react";
 import { useTranslator } from "@/core/translator";
-import { Button } from "@/client/presentation/components/ui";
+import { Button, InputField } from "@/client/presentation/components/ui";
 import { PUBLIC_LOGIN_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
 import { PUBLIC_LOGIN_TEXT_CONSTANT } from "../constants/TextConstant";
 
 export interface PublicLoginPlayerSectionProps {
+  readonly connected: boolean;
+  readonly walletAddress: string | null;
+  readonly walletName: string | null;
   readonly loading: boolean;
-  readonly isConfigured: boolean;
-  readonly onGoogleSignIn: () => void;
-  readonly guestLoading?: boolean;
-  readonly onGuestSignIn?: () => void;
+  readonly needsNickname: boolean;
+  readonly nickname: string;
+  readonly onNicknameChange: (value: string) => void;
+  readonly onSolanaSignIn: () => void;
+  readonly onSubmitNickname: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  readonly onDisconnectWallet: () => void;
+}
+
+function shortenWalletAddress(address: string): string {
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
 export function PublicLoginPlayerSection({
+  connected,
+  walletAddress,
+  walletName,
   loading,
-  isConfigured,
-  onGoogleSignIn,
-  guestLoading = false,
-  onGuestSignIn,
+  needsNickname,
+  nickname,
+  onNicknameChange,
+  onSolanaSignIn,
+  onSubmitNickname,
+  onDisconnectWallet,
 }: PublicLoginPlayerSectionProps): React.ReactElement {
   const { t } = useTranslator();
 
@@ -30,82 +45,89 @@ export function PublicLoginPlayerSection({
       aria-labelledby="player-login-heading"
       className="space-y-3"
     >
-      <h3
-        id="player-login-heading"
-        className="text-xs font-bold uppercase tracking-[0.14em] text-[#A8A7FF]"
-      >
-        {t(PUBLIC_LOGIN_TEXT_CONSTANT.PLAYER_HEADING)}
-      </h3>
-      <Button
-        id={PUBLIC_LOGIN_SEMANTIC_IDS.GOOGLE_LOGIN_BTN}
-        type="button"
-        variant="secondary"
-        size="md"
-        className="w-full"
-        disabled={loading || guestLoading || !isConfigured}
-        isLoading={loading}
-        onClick={onGoogleSignIn}
-        leftIcon={<GoogleMark />}
-      >
-        {t(PUBLIC_LOGIN_TEXT_CONSTANT.GOOGLE_LOGIN_BTN)}
-      </Button>
-      {!loading && !isConfigured && (
-        <p
-          id={PUBLIC_LOGIN_SEMANTIC_IDS.SSO_UNAVAILABLE_NOTICE}
-          className="text-xs leading-5 text-[#CFCBE2]/60"
+      <div className="flex items-center justify-between gap-2">
+        <h3
+          id="player-login-heading"
+          className="text-xs font-bold uppercase tracking-[0.14em] text-[#A8A7FF]"
         >
-          {t(PUBLIC_LOGIN_TEXT_CONSTANT.SSO_UNAVAILABLE)}
-        </p>
+          {t(PUBLIC_LOGIN_TEXT_CONSTANT.PLAYER_HEADING)}
+        </h3>
+        <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+          Devnet
+        </span>
+      </div>
+
+      {connected && walletAddress && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-[#6766FF]/25 bg-[#6766FF]/10 px-3 py-2 text-xs text-[#E6E4F2]">
+          <div className="flex min-w-0 items-center gap-2">
+            <Wallet className="h-3.5 w-3.5 shrink-0 text-[#A8A7FF]" aria-hidden="true" />
+            <span className="truncate font-mono">
+              {walletName ? `${walletName} · ` : ""}
+              {shortenWalletAddress(walletAddress)}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onDisconnectWallet}
+            disabled={loading}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-[#CFCBE2]/80 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+          >
+            <LogOut className="h-3 w-3" aria-hidden="true" />
+            {t(PUBLIC_LOGIN_TEXT_CONSTANT.DISCONNECT_WALLET_BTN)}
+          </button>
+        </div>
       )}
 
-      {onGuestSignIn && (
-        <div className="pt-1">
-          <Button
-            id={PUBLIC_LOGIN_SEMANTIC_IDS.GUEST_LOGIN_BTN}
-            type="button"
-            variant="ghost"
-            size="md"
-            className="w-full border border-white/10 bg-white/5 text-[#E6E4F2] hover:border-[#6766FF]/40 hover:bg-[#6766FF]/10 hover:text-white"
-            disabled={loading || guestLoading}
-            isLoading={guestLoading}
-            onClick={onGuestSignIn}
-            leftIcon={<Gamepad2 className="h-4 w-4 text-[#A8A7FF]" aria-hidden="true" />}
-          >
-            {t(PUBLIC_LOGIN_TEXT_CONSTANT.GUEST_LOGIN_BTN)}
-          </Button>
-          <p
-            id={PUBLIC_LOGIN_SEMANTIC_IDS.GUEST_DISCLAIMER}
-            className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11px] leading-4 text-[#CFCBE2]/50"
-          >
-            <Clock className="h-3 w-3 shrink-0 text-[#A8A7FF]/70" aria-hidden="true" />
-            <span>{t(PUBLIC_LOGIN_TEXT_CONSTANT.GUEST_DISCLAIMER)}</span>
+      {needsNickname ? (
+        <form
+          id={PUBLIC_LOGIN_SEMANTIC_IDS.NICKNAME_FORM}
+          onSubmit={onSubmitNickname}
+          className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5"
+        >
+          <p className="text-xs leading-5 text-[#CFCBE2]/80">
+            {t(PUBLIC_LOGIN_TEXT_CONSTANT.NICKNAME_PROMPT)}
           </p>
-        </div>
+          <InputField
+            id={PUBLIC_LOGIN_SEMANTIC_IDS.NICKNAME_INPUT}
+            label={t(PUBLIC_LOGIN_TEXT_CONSTANT.NICKNAME_LABEL)}
+            placeholder={t(PUBLIC_LOGIN_TEXT_CONSTANT.NICKNAME_PLACEHOLDER)}
+            value={nickname}
+            onChange={(e) => onNicknameChange(e.target.value)}
+            minLength={2}
+            maxLength={32}
+            required
+            autoFocus
+          />
+          <Button
+            id={PUBLIC_LOGIN_SEMANTIC_IDS.NICKNAME_SUBMIT_BTN}
+            type="submit"
+            variant="primary"
+            size="md"
+            className="w-full"
+            disabled={loading || nickname.trim().length < 2}
+            isLoading={loading}
+            leftIcon={<UserCheck className="h-4 w-4" aria-hidden="true" />}
+          >
+            {t(PUBLIC_LOGIN_TEXT_CONSTANT.NICKNAME_SUBMIT_BTN)}
+          </Button>
+        </form>
+      ) : (
+        <Button
+          id={PUBLIC_LOGIN_SEMANTIC_IDS.SOLANA_LOGIN_BTN}
+          type="button"
+          variant="secondary"
+          size="md"
+          className="w-full"
+          disabled={loading}
+          isLoading={loading}
+          onClick={onSolanaSignIn}
+          leftIcon={<Wallet className="h-4 w-4 text-[#A8A7FF]" aria-hidden="true" />}
+        >
+          {connected
+            ? t(PUBLIC_LOGIN_TEXT_CONSTANT.SOLANA_SIGN_BTN)
+            : t(PUBLIC_LOGIN_TEXT_CONSTANT.SOLANA_CONNECT_BTN)}
+        </Button>
       )}
     </section>
   );
 }
-
-function GoogleMark(): React.ReactElement {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"
-      />
-    </svg>
-  );
-}
-

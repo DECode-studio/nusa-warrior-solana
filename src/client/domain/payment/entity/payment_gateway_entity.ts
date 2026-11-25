@@ -3,7 +3,7 @@ export type PaymentGatewayMode = "DEV" | "PROD";
 export interface PaymentGatewayUserEntity {
   readonly userId: string;
   readonly name: string;
-  readonly email: string;
+  readonly walletAddress: string | null;
   readonly role: string;
   readonly paymentModeOverride: PaymentGatewayMode | null;
 }

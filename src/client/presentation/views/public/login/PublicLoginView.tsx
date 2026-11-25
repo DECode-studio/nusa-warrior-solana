@@ -60,12 +60,17 @@ function PublicLoginContent(): React.ReactElement {
 
         {/* Right Column: Unified Authentication Card */}
         <PublicLoginCard
+          connected={user.connected}
+          walletAddress={user.walletAddress}
+          walletName={user.walletName}
           userLoading={user.loading}
-          guestLoading={user.guestLoading}
-          isSsoConfigured={Boolean(user.ssoConfig?.isConfigured)}
+          needsNickname={user.needsNickname}
+          nickname={user.nickname}
+          onNicknameChange={user.setNickname}
           userErrorMsg={user.errorMsg}
-          onGoogleSignIn={user.startGoogleSignIn}
-          onGuestSignIn={user.startGuestSignIn}
+          onSolanaSignIn={user.startSolanaSignIn}
+          onSubmitNickname={user.submitNickname}
+          onDisconnectWallet={user.disconnectWallet}
           credentialsUsername={credentials.username}
           onCredentialsUsernameChange={credentials.setUsername}
           credentialsPassword={credentials.password}
