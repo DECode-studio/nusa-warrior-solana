@@ -58,7 +58,7 @@ export function AdminUserDetailProfile({ detail, totalCopies, registeredDateLabe
           <div className="flex items-start sm:items-center gap-5">
             <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-[rgba(103,102,255,0.4)] bg-gradient-to-tr from-[#5856F2]/30 to-[#6766FF]/20 text-white shadow-[0_0_30px_rgba(103,102,255,0.2)]">
               <span className="font-display text-2xl font-bold uppercase tracking-wider">
-                {detail.user.name ? detail.user.name.slice(0, 2) : detail.user.email.slice(0, 2)}
+                {detail.user.name ? detail.user.name.slice(0, 2) : (detail.user.walletAddress ?? "NW").slice(0, 2)}
               </span>
               <span
                 className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#07011F] ring-2 ring-[#080220]"
@@ -85,11 +85,11 @@ export function AdminUserDetailProfile({ detail, totalCopies, registeredDateLabe
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#CFCBE2]">
                 <div className="flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5 text-[#A9A8FF]" />
-                  <span id={ADMIN_USERS_SEMANTIC_IDS.DETAIL_USER_EMAIL}>{detail.user.email}</span>
+                  <span id={ADMIN_USERS_SEMANTIC_IDS.DETAIL_USER_EMAIL} className="font-mono">{detail.user.walletAddress ?? "-"}</span>
                   <button
                     type="button"
                     id={ADMIN_USERS_SEMANTIC_IDS.DETAIL_EMAIL_COPY}
-                    onClick={() => onCopyEmail(detail.user.email)}
+                    onClick={() => onCopyEmail(detail.user.walletAddress ?? "")}
                     aria-label={t(ADMIN_USERS_TEXT_CONSTANT.DETAIL_COPY_EMAIL)}
                     title={t(ADMIN_USERS_TEXT_CONSTANT.DETAIL_COPY_EMAIL)}
                     className="ml-1 inline-flex text-[#CFCBE2] hover:text-white transition-colors cursor-pointer"

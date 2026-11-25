@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { BattleSlotCharacter, BattleStateEntity } from "@/client/domain/battle/entity/battle_entity";
 import type { CardEntity } from "@/client/domain/card/entity/card_entity";
-import cardBackImage from "../../../../../../../../assets/cards/nusantara-card.back-card.png";
+const CARD_BACK_IMAGE = "/cards/nusantara-card.back-card.png";
 import { BATTLE_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
 import styles from "./BattleAnimations.module.css";
 
@@ -64,7 +64,7 @@ function makeFlight(sourceId: string, targetElement: HTMLElement, id: string, im
   const top = from.top + from.height / 2;
   return {
     id,
-    imagePath: faceDown ? cardBackImage.src : imagePath,
+    imagePath: faceDown ? CARD_BACK_IMAGE : imagePath,
     left,
     top,
     x: to.left + to.width / 2 - left,

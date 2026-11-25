@@ -115,7 +115,7 @@ export function AdminPaymentGatewayUserList({
                     {user.name}
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[#CFCBE2]">
-                    <span className="truncate">{user.email}</span>
+                    <span className="truncate font-mono">{user.walletAddress ?? "-"}</span>
                     <span
                       id={`${ADMIN_PAYMENT_GATEWAY_SEMANTIC_IDS.USER_ROLE_BADGE_PREFIX}${user.userId}`}
                       className={

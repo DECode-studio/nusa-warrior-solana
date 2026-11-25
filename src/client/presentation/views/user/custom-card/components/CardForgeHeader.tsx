@@ -10,14 +10,12 @@ import { CARD_FORGE_TEXT_CONSTANT } from "../constants/TextConstant";
 
 export interface CardForgeHeaderProps {
   readonly pricing: CustomCardPricingEntity | null;
-  readonly isGuest: boolean;
 }
 
 export function CardForgeHeader({
   pricing,
-  isGuest,
 }: CardForgeHeaderProps): React.ReactElement {
-  const { locale, t } = useTranslator();
+  const { t } = useTranslator();
 
   return (
     <div className="space-y-6">
@@ -70,34 +68,6 @@ export function CardForgeHeader({
         </div>
       </div>
 
-      {isGuest && (
-        <div
-          id={CARD_FORGE_SEMANTIC_IDS.GUEST_ALERT}
-          className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-600/10 to-[#12111c] p-5 sm:p-6 shadow-xl backdrop-blur-xl"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-300">
-              <Lock className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="font-display text-sm sm:text-base font-bold text-amber-200">
-                {t(CARD_FORGE_TEXT_CONSTANT.GUEST_ALERT_TITLE)}
-              </h2>
-              <p className="mt-1 text-xs text-amber-100/70 leading-relaxed">
-                {t(CARD_FORGE_TEXT_CONSTANT.GUEST_ALERT_DESC)}
-              </p>
-            </div>
-          </div>
-          <a
-            id={CARD_FORGE_SEMANTIC_IDS.GUEST_LINK_BTN}
-            href={`${API_ROUTES.AUTH.GOOGLE}?action=link&lang=${encodeURIComponent(locale)}`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-3 font-display text-xs font-bold text-white shadow-lg shadow-amber-500/25 transition hover:from-amber-400 hover:to-amber-500 active:scale-95"
-          >
-            <Link2 className="h-4 w-4" />
-            <span>{t(CARD_FORGE_TEXT_CONSTANT.GUEST_LINK_BTN)}</span>
-          </a>
-        </div>
-      )}
     </div>
   );
 }

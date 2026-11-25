@@ -68,7 +68,7 @@ export function AdminUsersTable({
               <td className="p-4 font-display text-sm font-bold text-white">
                 {user.name}
               </td>
-              <td className="p-4 text-[#CFCBE2]">{user.email}</td>
+              <td className="p-4 font-mono text-xs text-[#CFCBE2]">{user.walletAddress ?? "-"}</td>
               <td className="p-4">
                 <span
                   id={`${ADMIN_USERS_SEMANTIC_IDS.ROLE_BADGE_PREFIX}${user.id}`}

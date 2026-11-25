@@ -37,10 +37,6 @@ export const ROLE_OPTIONS = [
   { id: "UTUSAN", label: "Utusan" },
 ] as const;
 
-export interface UseCardForgeProps {
-  readonly isGuest?: boolean;
-}
-
 export interface UseCardForgeReturn {
   name: string;
   setName: (val: string) => void;
@@ -81,10 +77,9 @@ export interface UseCardForgeReturn {
   successCard: CardEntity | null;
   handleCreateAnother: () => void;
   submitCard: (e: React.FormEvent) => Promise<void>;
-  isGuest: boolean;
 }
 
-export function useCardForge({ isGuest = false }: UseCardForgeProps): UseCardForgeReturn {
+export function useCardForge(): UseCardForgeReturn {
   const { t } = useTranslator();
   const customCardUseCase = useMemo(() => getService(CUSTOM_CARD_USECASE_TOKEN), []);
   const [isSubmitting, startTransition] = useTransition();
@@ -122,18 +117,6 @@ export function useCardForge({ isGuest = false }: UseCardForgeProps): UseCardFor
   const [successCard, setSuccessCard] = useState<CardEntity | null>(null);
 
   const fetchPricing = async () => {
-    if (isGuest) {
-      setPricing({
-        balance: 0,
-        createdCount: 0,
-        nextCost: 0,
-        canAfford: true,
-        battlePointCap: 2100,
-      });
-      setIsLoadingPricing(false);
-      return;
-    }
-
     setIsLoadingPricing(true);
     try {
       const data = await customCardUseCase.getPricing();
@@ -151,7 +134,7 @@ export function useCardForge({ isGuest = false }: UseCardForgeProps): UseCardFor
 
   useEffect(() => {
     void fetchPricing();
-  }, [isGuest]);
+  }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -206,7 +189,6 @@ export function useCardForge({ isGuest = false }: UseCardForgeProps): UseCardFor
 
   const submitCard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isGuest) return;
 
     if (!imageFile) {
       setErrorMsg(t(CARD_FORGE_TEXT_CONSTANT.ERROR_NO_IMAGE));
@@ -305,7 +287,6 @@ export function useCardForge({ isGuest = false }: UseCardForgeProps): UseCardFor
     successCard,
     handleCreateAnother,
     submitCard,
-    isGuest,
   };
 }
 

@@ -155,36 +155,8 @@ export function ShopTopupSection({
         </IntellioCard>
       </div>
 
-      {/* Guest Lock Callout */}
-      {isGuest && (
-        <IntellioCard
-          variant="elevated"
-          padding="md"
-          className="border-amber/40 bg-amber/10 text-center"
-        >
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber/40 bg-amber/20 text-amber">
-            <Lock className="h-6 w-6" />
-          </div>
-          <h3 className="mt-3 text-base font-bold text-cream">
-            Akun Terdaftar Diperlukan
-          </h3>
-          <p className="mx-auto mt-1 max-w-md text-xs text-muted">
-            {t(SHOP_TEXT_CONSTANT.TOPUP_GUEST_WARNING)}
-          </p>
-          <div className="mt-4 flex justify-center">
-            <Button
-              href={`${API_ROUTES.AUTH.GOOGLE}?lang=${encodeURIComponent(locale)}`}
-              variant="amber"
-              size="sm"
-            >
-              {t(SHOP_TEXT_CONSTANT.TOPUP_LOGIN_CTA)}
-            </Button>
-          </div>
-        </IntellioCard>
-      )}
-
       {/* Registered User Top Up Form */}
-      {!isGuest && (
+      {(
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left Column: Tiers Selection Grid */}
           <div className="space-y-4 lg:col-span-7">
