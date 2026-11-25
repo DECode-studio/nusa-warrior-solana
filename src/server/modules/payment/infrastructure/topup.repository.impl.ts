@@ -88,7 +88,7 @@ export class TopupRepositoryImpl implements TopupRepository {
         where: { id: input.userId },
         select: { id: true, isGuest: true },
       });
-      if (!user || user.isGuest) {
+      if (!user) {
         throw AppError.forbidden("Fitur Top Up Nusa Point hanya tersedia untuk akun terdaftar.");
       }
 
@@ -116,7 +116,7 @@ export class TopupRepositoryImpl implements TopupRepository {
 
     const store = getEmbeddedStore();
     const user = store.users.find((u) => u.id === input.userId);
-    if (!user || user.isGuest) {
+    if (!user) {
       throw AppError.forbidden("Fitur Top Up Nusa Point hanya tersedia untuk akun terdaftar.");
     }
 

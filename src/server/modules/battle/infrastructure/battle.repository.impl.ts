@@ -851,8 +851,8 @@ export class BattleRepositoryImpl implements BattleRepository {
           Math.max(0, modeCap - modeTotal),
           Math.max(0, NUSA_POINT_POLICY.dailyTotalCap - total),
         );
-        if (!duplicate && !recentPair && recipient && !recipient.isGuest &&
-          (!reward.opponentUserId || (opponent && !opponent.isGuest && opponent.id !== recipient.id)) && amount > 0) {
+        if (!duplicate && !recentPair && recipient &&
+          (!reward.opponentUserId || (opponent && opponent.id !== recipient.id)) && amount > 0) {
           store.nusaPointTransactions.push({
             id: randomUUID(),
             userId: reward.userId,

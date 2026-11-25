@@ -13,7 +13,7 @@ import type { EnrichedDeckDto } from "@/server/modules/deck/domain/deck.reposito
 
 export interface AdminUserSummaryRecord {
   id: string;
-  email: string;
+  walletAddress: string | null;
   name: string;
   role: UserRoleValue;
   createdAt: string;

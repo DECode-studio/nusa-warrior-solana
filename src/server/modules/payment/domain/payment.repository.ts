@@ -6,7 +6,7 @@ export type PaymentMode = "DEV" | "PROD";
 export interface PaymentGatewayUserOverride {
   userId: string;
   name: string;
-  email: string;
+  walletAddress: string | null;
   role: UserRoleValue;
   paymentModeOverride: PaymentMode | null;
 }

@@ -73,11 +73,11 @@ export async function grantNusaPointsPrisma(
   });
   if (existing) return 0;
 
-  const user = await tx.user.findUnique({ where: { id: input.userId }, select: { isGuest: true } });
-  if (!user || user.isGuest) return 0;
+  const user = await tx.user.findUnique({ where: { id: input.userId }, select: { id: true } });
+  if (!user) return 0;
   if (input.opponentUserId) {
-    const opponent = await tx.user.findUnique({ where: { id: input.opponentUserId }, select: { isGuest: true } });
-    if (!opponent || opponent.isGuest || input.opponentUserId === input.userId) return 0;
+    const opponent = await tx.user.findUnique({ where: { id: input.opponentUserId }, select: { id: true } });
+    if (!opponent || input.opponentUserId === input.userId) return 0;
   }
 
   const now = input.now ?? new Date();

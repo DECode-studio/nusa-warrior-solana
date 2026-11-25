@@ -455,7 +455,7 @@ export class ShopRepositoryImpl implements ShopRepository {
       orderNumber,
       userId,
       buyerName: user?.name || "Pemain Nusantara",
-      buyerEmail: user?.email || "pemain@nusantaracard.id",
+      buyerEmail: "pemain@nusantaracard.id",
       starterPackId: starterPack.id,
       starterPackCode: starterPack.code,
       starterPackName: starterPack.nameId,
@@ -521,8 +521,8 @@ export class ShopRepositoryImpl implements ShopRepository {
 
     if (isPrismaDriverEnabled()) {
       return prisma.$transaction(async (tx) => {
-        const user = await tx.user.findUnique({ where: { id: input.userId! }, select: { isGuest: true } });
-        if (!user || (pointsToUse > 0 && user.isGuest)) throw AppError.forbidden("Nusa Point hanya tersedia untuk akun pemain terdaftar.");
+        const user = await tx.user.findUnique({ where: { id: input.userId! }, select: { id: true } });
+        if (!user) throw AppError.forbidden("Nusa Point hanya tersedia untuk akun pemain terdaftar.");
         if (pointsToUse > 0) {
           await tx.$queryRaw<Array<{ locked: number }>>(Prisma.sql`
             WITH point_lock AS MATERIALIZED (
@@ -571,7 +571,7 @@ export class ShopRepositoryImpl implements ShopRepository {
 
     const store = getEmbeddedStore();
     const user = store.users.find((item) => item.id === input.userId);
-    if (!user || (pointsToUse > 0 && user.isGuest)) throw AppError.forbidden("Nusa Point hanya tersedia untuk akun pemain terdaftar.");
+    if (!user) throw AppError.forbidden("Nusa Point hanya tersedia untuk akun pemain terdaftar.");
     const balance = store.nusaPointTransactions.filter((entry) => entry.userId === input.userId)
       .reduce((sum, entry) => sum + entry.amount, 0);
     if (balance < pointsToUse) throw AppError.badRequest("Saldo Nusa Point tidak mencukupi.");

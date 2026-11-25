@@ -237,7 +237,7 @@ function emptyProgress(userId: string, kingdom: "MAJAPAHIT" | "PAJAJARAN"): Stor
 function grantEmbeddedStoryPoints(store: ReturnType<typeof getEmbeddedStore>, userId: string, battleId: string, requested: number): number {
   if (store.nusaPointTransactions.some((row) => row.userId === userId && row.source === "STORY_MODE" && row.sourceId === battleId)) return 0;
   const user = store.users.find((row) => row.id === userId);
-  if (!user || user.isGuest) return 0;
+  if (!user) return 0;
   const start = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const parts = start.split("-").map(Number);
   const dayStart = Date.UTC(parts[0] ?? 1970, (parts[1] ?? 1) - 1, parts[2] ?? 1) - 7 * 60 * 60 * 1000;
