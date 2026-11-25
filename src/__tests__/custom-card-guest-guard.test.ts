@@ -5,33 +5,25 @@ vi.mock("server-only", () => ({}));
 import { requireAuthSession } from "@/server/shared/auth/authorization";
 import * as sessionModule from "@/server/shared/auth/session";
 
-describe("Custom Card Guest Guard", () => {
-  it("harus menolak akun guest dan melempar AppError.forbidden (403)", async () => {
-    vi.spyOn(sessionModule, "getCurrentSession").mockResolvedValue({
-      userId: "guest-user-123",
-      email: "guest@nusantara.local",
-      name: "Tamu Pendekar",
-      role: "PLAYER",
-      isGuest: true,
-    });
+describe("Auth Session Guard", () => {
+  it("harus menolak sesi kosong dan melempar AppError.unauthorized (401)", async () => {
+    vi.spyOn(sessionModule, "getCurrentSession").mockResolvedValue(null);
 
     await expect(requireAuthSession()).rejects.toThrow(
-      "Mode tamu tidak dapat menggunakan fitur ini. Silakan hubungkan akun Google Anda."
+      "Silakan hubungkan dompet Solana Anda untuk melanjutkan."
     );
   });
 
-  it("harus mengizinkan akun non-guest", async () => {
+  it("harus mengizinkan akun dompet Solana yang terautentikasi", async () => {
     vi.spyOn(sessionModule, "getCurrentSession").mockResolvedValue({
       userId: "player-user-123",
-      email: "pendekar@gmail.com",
+      walletAddress: "11111111111111111111111111111111",
       name: "Pendekar Sejati",
       role: "PLAYER",
-      isGuest: false,
     });
 
     const session = await requireAuthSession();
     expect(session.userId).toBe("player-user-123");
-    expect(session.isGuest).toBe(false);
+    expect(session.walletAddress).toBe("11111111111111111111111111111111");
   });
 });
-

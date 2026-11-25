@@ -17,30 +17,17 @@ import { shopRepository } from "@/server/modules/shop/infrastructure/shop.reposi
 
 describe("Nusa Point Top Up Feature", () => {
   const testUserId = "user-test-registered-1";
-  const testGuestUserId = "user-test-guest-1";
 
   beforeEach(() => {
     const store = getEmbeddedStore();
     store.users = [
       {
         id: testUserId,
-        email: "warrior@nusantara.id",
+        walletAddress: "11111111111111111111111111111111",
         name: "Pendekar Nusantara",
-        isGuest: false,
         passwordHash: "hash",
         role: "PLAYER",
         hasClaimedStarterPack: true,
-        lastActiveAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: testGuestUserId,
-        email: "tamu@nusantara.id",
-        name: "Tamu Sementara",
-        isGuest: true,
-        passwordHash: "",
-        role: "PLAYER",
-        hasClaimedStarterPack: false,
         lastActiveAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       },
@@ -113,10 +100,10 @@ describe("Nusa Point Top Up Feature", () => {
       expect(order.paymentStatus).toBe("PENDING");
     });
 
-    it("should reject top up order creation for guest user", async () => {
+    it("should reject top up order creation for unknown user", async () => {
       await expect(
         topupRepository.createTopupOrder({
-          userId: testGuestUserId,
+          userId: "unknown-user-id",
           buyerName: "Tamu Sementara",
           buyerEmail: "tamu@nusantara.id",
           amountIdr: 10000,
