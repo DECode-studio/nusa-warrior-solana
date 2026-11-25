@@ -1,0 +1,22 @@
+export const USER_LAYOUT_TEXT_CONSTANT = {
+  CONSOLE_SUBTITLE: "userLayout.consoleSubtitle",
+  WARRIOR_ACTIVE: "userLayout.warriorActive",
+  LEVEL_DEFAULT: "userLayout.levelDefault",
+  LANGUAGE_SWITCH: "userLayout.languageSwitch",
+  RETURN_HOME: "userLayout.returnHome",
+  LOGOUT: "userLayout.logout",
+  LOGGING_OUT: "userLayout.loggingOut",
+  NAV_DASHBOARD: "nav.userDashboard",
+  NAV_TUTORIAL: "nav.tutorial",
+  NAV_BATTLE: "nav.battle",
+  NAV_DECKS: "nav.decks",
+  NAV_SHOP: "nav.shop",
+  DEFAULT_WARRIOR_NAME: "userDashboard.defaultWarriorName",
+  MOBILE_NAV_ARIA: "userLayout.mobileNavAria",
+  MOBILE_CLOSE_ARIA: "userLayout.mobileCloseAria",
+  NAV_ARIA: "userLayout.navAria",
+  TOGGLE_SFX_ARIA: "userLayout.toggleSfxAria",
+  TOGGLE_MUSIC_ARIA: "userLayout.toggleMusicAria",
+  REFRESH_ARIA: "userLayout.refreshAria",
+} as const;
+

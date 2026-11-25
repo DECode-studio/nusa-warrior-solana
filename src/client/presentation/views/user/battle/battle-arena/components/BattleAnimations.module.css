@@ -1,0 +1,921 @@
+:global(.battlefield-zero-scroll).arenaBoard {
+  background-image: linear-gradient(180deg, rgb(5 4 18 / 26%), rgb(5 4 18 / 44%)), var(--battle-board-desktop);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.battlefieldStage {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.botBoard,
+.playerBoard {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.activeTurnGlow {
+  position: absolute;
+  z-index: 9;
+  box-sizing: border-box;
+  border: 2px solid;
+  border-radius: clamp(12px, 1.2vw, 22px);
+  background: radial-gradient(ellipse at center, var(--turn-glow-fill), transparent 78%);
+  box-shadow: inset 0 0 22px var(--turn-glow-inner), 0 0 16px 3px var(--turn-glow-edge), 0 0 38px 8px var(--turn-glow-halo);
+  pointer-events: none;
+  animation: active-turn-board-glow 2.4s ease-in-out infinite;
+}
+
+.activeBotTurnGlow {
+  --turn-glow-fill: rgb(132 94 255 / 16%);
+  --turn-glow-inner: rgb(158 126 255 / 34%);
+  --turn-glow-edge: rgb(158 126 255 / 78%);
+  --turn-glow-halo: rgb(111 74 255 / 48%);
+  border-color: rgb(190 165 255 / 96%);
+  top: 11%;
+  left: 11%;
+  width: 55.2%;
+  height: 34.4%;
+}
+
+.activePlayerTurnGlow {
+  --turn-glow-fill: rgb(13 181 97 / 17%);
+  --turn-glow-inner: rgb(28 232 132 / 36%);
+  --turn-glow-edge: rgb(28 232 132 / 82%);
+  --turn-glow-halo: rgb(13 181 97 / 54%);
+  border-color: rgb(114 255 181 / 98%);
+  top: 51.2%;
+  left: 11%;
+  width: 55.2%;
+  height: 38.6%;
+}
+
+.pileLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  pointer-events: none;
+}
+
+.mobileGraveyard { display: none; }
+
+.pileSlot {
+  position: absolute;
+  left: 1.35%;
+  display: flex;
+  width: 6.7%;
+  height: 19.7%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.pileSlot.mobileGraveyard { display: none; }
+
+.pileImage {
+  position: absolute;
+  inset: 2.5%;
+  width: 95%;
+  height: 95%;
+  border-radius: 0.3rem;
+  object-fit: cover;
+}
+
+.emptyPile {
+  position: absolute;
+  inset: 3%;
+  border-radius: 0.35rem;
+  background: rgb(4 10 18 / 74%);
+}
+
+.pileCount {
+  position: absolute;
+  right: 5%;
+  bottom: 4%;
+  min-width: 1.35rem;
+  border: 1px solid rgb(225 170 73 / 86%);
+  border-radius: 999px;
+  background: rgb(5 7 12 / 92%);
+  padding: 0.05rem 0.25rem;
+  color: #ffe4a4;
+  font-size: clamp(9px, 0.72vw, 13px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pileCaption {
+  position: absolute;
+  top: 4%;
+  left: 4%;
+  border: 1px solid rgb(225 170 73 / 72%);
+  border-radius: 0.2rem;
+  background: rgb(5 7 12 / 90%);
+  padding: 0 0.16rem;
+  color: #ffe4a4;
+  font-size: clamp(7px, 0.52vw, 9px);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.deckBotCharacter { top: 5.5%; }
+.deckBotInstrument { top: 28.2%; }
+.deckPlayerCharacter { top: 52%; }
+.deckPlayerInstrument { top: 74.7%; }
+.graveBotCharacter,
+.graveBotInstrument,
+.gravePlayerCharacter,
+.gravePlayerInstrument { left: 68.5%; }
+.graveBotCharacter { top: 5.5%; }
+.graveBotInstrument { top: 28.2%; }
+.gravePlayerCharacter { top: 52%; }
+.gravePlayerInstrument { top: 74.7%; }
+
+.botMeta,
+.playerMeta {
+  position: absolute;
+  left: 1.55%;
+  display: flex;
+  width: 6.6%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.42rem;
+  color: #f4e2b5;
+  font-size: clamp(8px, 0.62vw, 11px);
+  line-height: 1.18;
+  text-shadow: 0 1px 4px #000;
+  pointer-events: auto;
+}
+
+.botMeta { top: 5.7%; }
+.playerMeta { top: 51.8%; }
+
+.botMeta > div,
+.playerMeta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.botSecondRow,
+.playerSecondRow {
+  position: absolute;
+  left: 17.45%;
+  display: flex;
+  width: 41.8%;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.botSecondRow { top: 14.9%; }
+.playerSecondRow { top: 68.4%; z-index: 1; }
+
+.botFrontRow,
+.playerFrontRow {
+  position: absolute;
+  left: 25.3%;
+  display: flex;
+  width: 26.2%;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.botFrontRow { top: 19.8%; }
+.playerFrontRow { top: 53.5%; z-index: 2; }
+
+.botSecondRow > .battleCard,
+.playerSecondRow > .battleCard,
+.botSecondRow > .emptySlot,
+.playerSecondRow > .emptySlot {
+  width: clamp(72px, 6.85vw, 115px) !important;
+  flex: 0 0 auto;
+}
+
+.botFrontRow > .battleCard,
+.playerFrontRow > .battleCard,
+.botFrontRow > .emptySlot,
+.playerFrontRow > .emptySlot {
+  width: clamp(88px, 8.65vw, 145px) !important;
+  flex: 0 0 auto;
+}
+
+.battleCard,
+.emptySlot {
+  aspect-ratio: 1024 / 1505 !important;
+}
+
+.clashDivider {
+  display: none;
+}
+
+.arenaHeader {
+  position: absolute;
+  z-index: 35;
+  inset: 0 0 auto;
+  min-height: 5.2%;
+}
+
+.modeHelper {
+  position: absolute;
+  z-index: 34;
+  top: 5.4%;
+  left: 50%;
+  width: max-content;
+  max-width: 75%;
+  transform: translateX(-50%);
+  border: 1px solid rgb(215 154 56 / 52%);
+  border-radius: 0 0 0.65rem 0.65rem;
+  background: rgb(7 4 18 / 88%);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 40%);
+}
+
+.boardActions {
+  position: absolute;
+  z-index: 36;
+  top: 45.3%;
+  left: 11.5%;
+  display: grid;
+  width: 55%;
+  height: clamp(44px, 5vh, 58px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0.75vw;
+  pointer-events: auto;
+}
+
+.boardActionButton {
+  display: inline-flex;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2px solid #9c8e72;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgb(38 34 36 / 96%), rgb(13 14 22 / 96%));
+  color: #fff4dc;
+  font-family: var(--font-display);
+  font-size: clamp(11px, 1vw, 18px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 5px 12px rgb(0 0 0 / 55%);
+  transition: filter 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+}
+
+.boardActionButton > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.boardActionButton:hover:not(:disabled) { filter: brightness(1.25); transform: translateY(-2px); }
+.boardActionButton:disabled { cursor: not-allowed; opacity: 0.48; }
+.attackButton { border-color: #c08a37; color: #ffd47f; }
+.surrenderButton { border-color: #a34438; background: linear-gradient(180deg, #60221f, #260e16); color: #ffd5ce; }
+
+.instrumentHand {
+  position: absolute;
+  z-index: 25;
+  top: 12.4%;
+  right: 1.1%;
+  display: flex;
+  width: 20.8%;
+  height: 76%;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.6rem;
+  border: 0;
+  background: transparent;
+  padding: 0.8rem 0.6rem;
+  pointer-events: auto;
+}
+
+.instrumentHand > :first-child {
+  position: absolute;
+  top: -10.5%;
+  left: 3%;
+  width: 94%;
+  color: #f2d28c;
+  font-size: clamp(9px, 0.72vw, 13px);
+  text-shadow: 0 2px 5px #000;
+}
+
+.instrumentCards {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  gap: 1.5%;
+  overflow: hidden;
+}
+
+.instrumentCard {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.opponentInstrumentHand { display: none; }
+.mobileSurrender { display: none !important; }
+
+@media (max-width: 767px) {
+  .battlefieldStage { inset: 0; }
+  .pileLayer { display: block; }
+  .botMeta, .playerMeta { display: none; }
+  .arenaHeader {
+    min-height: 6%;
+    align-items: center;
+    border-bottom: 1px solid rgb(255 255 255 / 10%);
+    background: rgb(8 7 11 / 86%);
+    padding: max(0.25rem, env(safe-area-inset-top)) 0.5rem 0.35rem;
+    backdrop-filter: blur(12px);
+  }
+  .arenaHeader > div:first-child { min-width: 0; gap: 0.25rem; }
+  .arenaHeader > div:first-child > button { flex: 0 0 auto; padding: 0.25rem 0.4rem; font-size: 9px; }
+  .arenaHeader > div:first-child > div:nth-child(2) {
+    min-width: 0;
+    max-width: 34vw;
+    overflow: hidden;
+    padding: 0.25rem 0.35rem;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .arenaHeader > div:last-child { flex: 0 0 auto; gap: 0.25rem; }
+  .arenaHeader > div:last-child > button { padding: 0.25rem 0.4rem; font-size: 9px; }
+  .mobileSurrender { display: none !important; }
+
+  .botSecondRow, .playerSecondRow {
+    left: 23.8%;
+    width: 52.4%;
+    justify-content: space-between;
+  }
+  .botFrontRow, .playerFrontRow {
+    left: 31.1%;
+    width: 37.8%;
+    justify-content: space-between;
+  }
+  .botSecondRow > .battleCard, .playerSecondRow > .battleCard,
+  .botSecondRow > .emptySlot, .playerSecondRow > .emptySlot { width: clamp(34px, 10.5vw, 100px) !important; }
+  .botFrontRow > .battleCard, .playerFrontRow > .battleCard,
+  .botFrontRow > .emptySlot, .playerFrontRow > .emptySlot { width: clamp(42px, 13.2vw, 124px) !important; }
+  .botSecondRow { top: 13.1%; }
+  .botFrontRow { top: 19.2%; }
+  .playerFrontRow { top: 37.5%; }
+  .playerSecondRow { top: 46.5%; }
+  .activeBotTurnGlow { top: 11.2%; left: 19%; width: 62%; height: 19%; }
+  .activePlayerTurnGlow { top: 35.5%; left: 19%; width: 62%; height: 20.5%; }
+  .emptySlot { border-radius: 0.3rem !important; }
+  .battleCard { border-radius: 0 !important; }
+  .emptySlot { padding: 0.1rem !important; font-size: clamp(7px, 1.9vw, 10px) !important; }
+  .battleCard button { top: 0.1rem !important; right: 0.1rem !important; width: 22px !important; height: 22px !important; }
+  .battleCard button > span { width: 18px !important; height: 18px !important; border-width: 1px !important; }
+  .battleCard button svg { width: 11px !important; height: 11px !important; }
+  .clashDivider { top: 35%; }
+
+  .pileSlot {
+    left: 3.5%;
+    display: block;
+    width: 12.5%;
+    height: 9.5%;
+    overflow: hidden;
+    background: transparent;
+  }
+  .pileImage {
+    display: none;
+    inset: 7%;
+    width: 86%;
+    height: 86%;
+    border-radius: 0.2rem;
+    object-fit: cover;
+  }
+  .emptyPile { display: none; }
+  .deckBotCharacter .pileImage, .graveBotCharacter .pileImage,
+  .deckPlayerCharacter .pileImage, .gravePlayerCharacter .pileImage,
+  .mobileGraveyard .pileImage { display: block; }
+  .pileCaption, .pileCount {
+    position: absolute;
+    min-width: 0;
+    border: 1px solid rgb(225 170 73 / 72%);
+    border-radius: 0.2rem;
+    background: rgb(5 7 12 / 88%);
+    padding: 0.05rem 0.12rem;
+    color: #ffe4a4;
+    font-size: clamp(6px, 1.7vw, 8px);
+    line-height: 1.1;
+    text-shadow: 0 1px 3px #000;
+  }
+  .deckBotCharacter .pileCaption, .graveBotCharacter .pileCaption,
+  .deckPlayerCharacter .pileCaption, .gravePlayerCharacter .pileCaption { top: 7%; left: 5%; }
+  .deckBotCharacter .pileCount, .graveBotCharacter .pileCount,
+  .deckPlayerCharacter .pileCount, .gravePlayerCharacter .pileCount { top: 7%; right: 5%; bottom: auto; }
+  .deckBotInstrument .pileCaption, .graveBotInstrument .pileCaption,
+  .deckPlayerInstrument .pileCaption, .gravePlayerInstrument .pileCaption { top: auto; bottom: 7%; left: 5%; }
+  .deckBotInstrument .pileCount, .graveBotInstrument .pileCount,
+  .deckPlayerInstrument .pileCount, .gravePlayerInstrument .pileCount { top: auto; right: 5%; bottom: 7%; }
+  .deckBotCharacter, .deckBotInstrument { top: 11.5%; }
+  .deckPlayerCharacter, .deckPlayerInstrument { top: 47.3%; }
+  .graveBotCharacter, .graveBotInstrument,
+  .gravePlayerCharacter, .gravePlayerInstrument { display: none; }
+  .pileSlot.mobileGraveyard { display: block; left: 84%; }
+  .mobileGraveBot { top: 11.5%; }
+  .mobileGravePlayer { top: 47.3%; }
+  .mobileGraveyard .pileCaption { top: 7%; left: 5%; }
+  .mobileGraveyard .pileCount { top: 7%; right: 5%; bottom: auto; }
+
+  .boardActions {
+    top: auto;
+    bottom: calc(5.2% + env(safe-area-inset-bottom));
+    left: 7%;
+    width: 86%;
+    height: clamp(44px, 5.7vh, 58px);
+    grid-template-columns: 0.9fr 1.35fr 0.9fr;
+    gap: 2%;
+  }
+  .boardActionButton {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    border-radius: 0.45rem;
+    padding: 0.2rem;
+    font-size: clamp(8px, 2.5vw, 10px);
+    gap: 0.2rem;
+  }
+  .boardActionButton svg { width: 13px; height: 13px; flex: 0 0 auto; }
+  .boardActions > .surrenderButton { display: inline-flex; }
+
+  .opponentInstrumentHand {
+    display: none;
+  }
+  .instrumentHand {
+    top: 60.7%;
+    right: auto;
+    left: 23.5%;
+    width: 53%;
+    height: 20.2%;
+    padding: 0;
+  }
+  .instrumentHand > :first-child {
+    top: -5%;
+    left: 0;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    font-size: clamp(7px, 1.9vw, 9px);
+  }
+  .instrumentCards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 2% 3%;
+    overflow: visible;
+  }
+  .instrumentCard { width: 100%; }
+  .instrumentCard > div { width: clamp(34px, 11.7vw, 88px) !important; border-radius: 0 !important; }
+  .modeHelper { top: 9.4%; max-width: 94%; font-size: 9px; }
+}
+
+.flightLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.battleAttackArrow {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.battleAttackArrowPath {
+  fill: none;
+  stroke: #ffd47e;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 5px rgb(255 204 103 / 98%)) drop-shadow(0 0 14px rgb(255 120 42 / 90%));
+  animation: battle-attack-arrow-draw 420ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
+}
+
+.battleAttackArrowHead {
+  fill: #fff0bb;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px rgb(255 178 58 / 95%));
+  animation: battle-attack-arrow-arrive 160ms ease-out 300ms both;
+}
+
+.boardAttackerGlow,
+.boardOpponentAttackerGlow {
+  position: relative;
+  z-index: 30;
+}
+
+.boardAttackerGlow {
+  animation: board-attacker-glow 420ms ease-in-out 1 !important;
+}
+
+.boardOpponentAttackerGlow {
+  animation: board-opponent-attacker-glow 420ms ease-in-out 1 !important;
+}
+
+.boardDefenderGlow,
+.boardOpponentDefenderGlow {
+  position: relative;
+  z-index: 30;
+}
+
+.boardDefenderGlow {
+  animation: board-defender-glow 420ms ease-in-out 1 !important;
+}
+
+.boardOpponentDefenderGlow {
+  animation: board-opponent-defender-glow 420ms ease-in-out 1 !important;
+}
+
+.dealFlyer {
+  position: fixed;
+  z-index: 1;
+  border: 2px solid #d79a38;
+  border-radius: 0.7rem;
+  object-fit: cover;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 58%), 0 0 18px rgb(246 184 76 / 44%);
+  transform: translate(-50%, -50%) rotate(-9deg) scale(0.72);
+  animation: deal-flight 720ms cubic-bezier(0.16, 0.82, 0.2, 1) both;
+}
+
+.stateDrawFlyer {
+  position: fixed;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: clamp(54px, 8vw, 118px);
+  aspect-ratio: 3 / 4;
+  border: 2px solid #d79a38;
+  border-radius: 0.7rem;
+  object-fit: cover;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 58%), 0 0 18px rgb(246 184 76 / 44%);
+  pointer-events: none;
+  animation: state-draw-flight 820ms cubic-bezier(0.16, 0.82, 0.2, 1) both;
+}
+
+@keyframes state-draw-flight {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.24) rotate(-14deg); }
+  12% { opacity: 1; }
+  58% { opacity: 1; transform: translate(-50%, -50%) translate(calc(var(--flight-x) * 0.72), calc(var(--flight-y) * 0.72)) scale(1.04) rotate(3deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--flight-x), var(--flight-y)) scale(0.72) rotate(0deg); }
+}
+
+.faceDown {
+  border-color: #9c722e;
+}
+
+.arriving {
+  opacity: 0 !important;
+}
+
+.landed {
+  animation: card-landing 640ms cubic-bezier(0.18, 0.86, 0.18, 1) both;
+}
+
+.flip {
+  animation: card-flip 620ms cubic-bezier(0.2, 0.78, 0.22, 1);
+  backface-visibility: hidden;
+}
+
+.duelAttacker {
+  animation: charge-left 1550ms cubic-bezier(0.16, 0.82, 0.2, 1) both;
+}
+
+.duelDefender {
+  animation: charge-right 1550ms cubic-bezier(0.16, 0.82, 0.2, 1) both;
+}
+
+.duelCardDestroyed {
+  animation: duel-card-collapse 1800ms cubic-bezier(0.14, 0.8, 0.22, 1) 1900ms both;
+  transform-origin: 50% 48%;
+}
+
+.duelImpact {
+  animation: impact-wave 1100ms ease-out 1380ms both;
+}
+
+.duelTitle {
+  animation: duel-result-enter 520ms ease-out 2250ms both;
+  text-shadow: 0 2px 12px #000, 0 0 18px rgb(255 183 73 / 65%);
+}
+
+.duelSummary {
+  animation: duel-result-enter 520ms ease-out 2450ms both;
+  text-shadow: 0 2px 10px #000;
+}
+
+.duelDeathLabel {
+  animation: duel-result-enter 420ms ease-out 3560ms both;
+}
+
+.duelBackdrop {
+  background:
+    radial-gradient(ellipse at 50% 44%, rgb(24 22 45 / 40%), transparent 58%),
+    rgb(2 4 14 / 82%);
+  backdrop-filter: blur(7px) saturate(0.82);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.duelPanel {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid rgb(226 185 104 / 72%);
+  border-radius: 26px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(117 79 31 / 21%), transparent 54%),
+    linear-gradient(145deg, rgb(14 18 32 / 98%), rgb(5 8 19 / 98%) 55%, rgb(17 12 28 / 98%));
+  box-shadow:
+    0 32px 100px rgb(0 0 0 / 78%),
+    0 0 0 1px rgb(255 231 176 / 12%) inset,
+    0 0 42px rgb(190 133 50 / 15%);
+}
+
+.duelPanel::before {
+  position: absolute;
+  z-index: 0;
+  inset: 7px;
+  border: 1px solid rgb(219 173 91 / 23%);
+  border-radius: 19px;
+  content: "";
+  pointer-events: none;
+}
+
+.duelPanelGlow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 48%, rgb(83 47 30 / 24%), transparent 52%);
+}
+
+.duelEyebrow {
+  border: 1px solid rgb(221 175 88 / 52%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(82 58 29 / 78%), rgb(31 25 24 / 88%));
+  padding: 5px 14px;
+  color: #f5d99d;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 32%), 0 0 16px rgb(219 169 83 / 12%);
+}
+
+.duelCardsStage {
+  isolation: isolate;
+  padding: 22px 12px;
+  border-top: 1px solid rgb(220 174 89 / 24%);
+  border-bottom: 1px solid rgb(220 174 89 / 24%);
+  background: linear-gradient(90deg, transparent, rgb(2 5 13 / 48%) 18%, rgb(2 5 13 / 48%) 82%, transparent);
+}
+
+.duelCardsStage > div > :global(.nusantara-card-interactive) {
+  filter: drop-shadow(0 18px 24px rgb(0 0 0 / 70%));
+}
+
+.duelRole {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 145px;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 7px 18px rgb(0 0 0 / 30%);
+}
+
+.duelRoleAttacker {
+  border-color: rgb(153 130 255 / 62%);
+  background: linear-gradient(180deg, rgb(47 35 96 / 92%), rgb(23 22 52 / 94%));
+  color: #d9ceff;
+}
+
+.duelRoleDefender {
+  border-color: rgb(35 192 133 / 58%);
+  background: linear-gradient(180deg, rgb(15 78 58 / 92%), rgb(9 38 37 / 94%));
+  color: #a2f2d0;
+}
+
+.duelSigil {
+  border: 1px solid rgb(227 185 105 / 72%);
+  background: radial-gradient(circle, rgb(119 76 30 / 90%), rgb(24 22 30 / 98%) 68%);
+  color: #f7d88e;
+  box-shadow: 0 0 0 5px rgb(5 8 18 / 78%), 0 0 24px rgb(220 161 60 / 33%);
+}
+
+.duelSigil svg {
+  color: #ffe4a7;
+}
+
+.duelDeathLabel {
+  border: 1px solid rgb(255 156 135 / 68%);
+  background: linear-gradient(180deg, rgb(139 35 37 / 97%), rgb(72 13 23 / 97%));
+  box-shadow: 0 0 22px rgb(239 65 70 / 23%);
+}
+
+.duelSummary {
+  border: 1px solid rgb(217 173 93 / 29%);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgb(10 14 25 / 88%), rgb(24 19 29 / 84%));
+  box-shadow: 0 12px 30px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 5%);
+  text-shadow: 0 2px 10px #000;
+}
+
+@keyframes deal-flight {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-9deg) scale(0.72);
+  }
+  14% { opacity: 1; }
+  68% {
+    transform: translate(calc(-50% + var(--flight-x)), calc(-50% + var(--flight-y) - 24px)) rotate(5deg) scale(1.06);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--flight-x)), calc(-50% + var(--flight-y))) rotate(0deg) scale(1.38);
+  }
+}
+
+@keyframes card-landing {
+  0% { opacity: 0; transform: scale(0.88); filter: brightness(1.8); }
+  30% { opacity: 1; transform: scale(1.05); filter: brightness(1.3); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes card-flip {
+  0% { transform: perspective(900px) rotateY(0); }
+  48% { transform: perspective(900px) rotateY(88deg) scale(1.04); filter: brightness(1.5); }
+  100% { transform: perspective(900px) rotateY(0); }
+}
+
+@keyframes charge-left {
+  0% { opacity: 0; transform: translate(-42vw, 12vh) rotate(-12deg) scale(0.72); }
+  72% { opacity: 1; transform: translate(4%, -2%) rotate(-4deg) scale(1.08); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(-2deg) scale(1); }
+}
+
+@keyframes charge-right {
+  0% { opacity: 0; transform: translate(42vw, -12vh) rotate(12deg) scale(0.72); }
+  72% { opacity: 1; transform: translate(-4%, 2%) rotate(4deg) scale(1.08); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(2deg) scale(1); }
+}
+
+@keyframes card-destroy {
+  0% { opacity: 1; transform: scale(1) rotate(0); filter: brightness(1); clip-path: inset(0); }
+  22% { opacity: 1; transform: scale(1.06) rotate(-3deg); filter: brightness(1.8) sepia(0.5); clip-path: polygon(0 0, 100% 0, 98% 100%, 2% 100%); }
+  62% { opacity: 0.68; transform: scale(0.82) rotate(7deg) translateY(8%); filter: sepia(0.8); clip-path: polygon(12% 3%, 89% 8%, 82% 84%, 18% 93%, 7% 61%, 14% 39%, 4% 19%); }
+  100% { opacity: 0; transform: scale(0.3) rotate(15deg) translateY(35%); filter: brightness(0.4); clip-path: polygon(30% 18%, 72% 24%, 62% 68%, 36% 74%, 22% 51%, 32% 35%); }
+}
+
+@keyframes duel-card-collapse {
+  0% { opacity: 1; transform: scale(1) rotate(0); filter: brightness(1); clip-path: inset(0); }
+  18% { opacity: 1; transform: scale(1.045) rotate(-2deg); filter: brightness(1.85) sepia(0.45); clip-path: polygon(0 0, 100% 0, 98% 100%, 2% 100%); }
+  38% { opacity: 0.96; transform: scale(1.015) rotate(2deg); filter: brightness(1.35) sepia(0.8); clip-path: polygon(3% 0, 100% 2%, 94% 48%, 100% 100%, 0 96%, 6% 54%); }
+  66% { opacity: 0.72; transform: scale(0.86) rotate(-5deg) translateY(5%); filter: sepia(1) brightness(0.9); clip-path: polygon(12% 3%, 89% 8%, 82% 84%, 18% 93%, 7% 61%, 14% 39%, 4% 19%); }
+  100% { opacity: 0; transform: scale(0.38) rotate(12deg) translateY(28%); filter: brightness(0.35) sepia(1); clip-path: polygon(30% 18%, 72% 24%, 62% 68%, 36% 74%, 22% 51%, 32% 35%); }
+}
+
+@keyframes duel-result-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes battle-attack-arrow-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes battle-attack-arrow-arrive {
+  0% { opacity: 0; transform: scale(0.45); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes board-attacker-glow {
+  0%, 100% {
+    box-shadow: 0 0 9px 2px rgb(255 180 59 / 40%), 0 0 20px 7px rgb(255 117 41 / 22%);
+    filter: drop-shadow(0 0 10px rgb(255 180 59 / 65%));
+  }
+  50% {
+    box-shadow: 0 0 18px 7px rgb(255 206 94 / 95%), 0 0 40px 15px rgb(255 116 38 / 70%);
+    filter: drop-shadow(0 0 22px rgb(255 206 94 / 95%));
+  }
+}
+
+@keyframes active-turn-board-glow {
+  0%, 100% {
+    opacity: 0.76;
+    filter: brightness(1.02);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.25);
+  }
+}
+
+@keyframes board-opponent-attacker-glow {
+  0%, 100% {
+    box-shadow: 0 0 9px 2px rgb(155 130 255 / 40%), 0 0 20px 7px rgb(117 83 255 / 24%);
+    filter: drop-shadow(0 0 10px rgb(155 130 255 / 65%));
+  }
+  50% {
+    box-shadow: 0 0 18px 7px rgb(186 164 255 / 95%), 0 0 40px 15px rgb(107 76 255 / 70%);
+    filter: drop-shadow(0 0 22px rgb(186 164 255 / 95%));
+  }
+}
+
+@keyframes board-defender-glow {
+  0%, 100% {
+    box-shadow: 0 0 9px 2px rgb(255 91 87 / 38%), 0 0 20px 7px rgb(239 55 57 / 24%);
+    filter: drop-shadow(0 0 10px rgb(255 91 87 / 65%));
+  }
+  50% {
+    box-shadow: 0 0 18px 7px rgb(255 121 102 / 94%), 0 0 40px 15px rgb(255 48 57 / 70%);
+    filter: drop-shadow(0 0 22px rgb(255 121 102 / 95%));
+  }
+}
+
+@keyframes board-opponent-defender-glow {
+  0%, 100% {
+    box-shadow: 0 0 9px 2px rgb(62 223 172 / 36%), 0 0 20px 7px rgb(35 192 133 / 22%);
+    filter: drop-shadow(0 0 10px rgb(62 223 172 / 65%));
+  }
+  50% {
+    box-shadow: 0 0 18px 7px rgb(111 255 201 / 90%), 0 0 40px 15px rgb(35 192 133 / 68%);
+    filter: drop-shadow(0 0 22px rgb(111 255 201 / 95%));
+  }
+}
+
+@keyframes impact-wave {
+  0% { opacity: 0; transform: scale(0.35); }
+  35% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dealFlyer, .landed, .flip, .duelAttacker, .duelDefender, .duelCardDestroyed, .duelImpact, .duelTitle, .duelSummary, .duelDeathLabel, .battleAttackArrowPath, .battleAttackArrowHead, .boardAttackerGlow, .boardOpponentAttackerGlow, .boardDefenderGlow, .boardOpponentDefenderGlow {
+    animation-duration: 1ms !important;
+  }
+  .activeTurnGlow {
+    animation: none;
+    opacity: 0.72;
+  }
+}
+
+@media (max-width: 767px) {
+  :global(.battlefield-zero-scroll).arenaBoard {
+    background-image: linear-gradient(180deg, rgb(5 4 18 / 38%), rgb(5 4 18 / 56%)), var(--battle-board-mobile);
+  }
+
+  .duelCardsStage {
+    padding: 14px 8px;
+  }
+
+  .duelPanel {
+    max-height: calc(100dvh - 16px);
+    border-radius: 20px;
+  }
+
+  @keyframes charge-top {
+    0% { opacity: 0; transform: translateY(-30px) rotate(-3deg) scale(0.9); }
+    72% { opacity: 1; transform: translateY(3px) rotate(-1.5deg) scale(1.03); }
+    100% { opacity: 1; transform: translateY(0) rotate(-1deg) scale(1); }
+  }
+
+  @keyframes charge-bottom {
+    0% { opacity: 0; transform: translateY(30px) rotate(3deg) scale(0.9); }
+    72% { opacity: 1; transform: translateY(-3px) rotate(1.5deg) scale(1.03); }
+    100% { opacity: 1; transform: translateY(0) rotate(1deg) scale(1); }
+  }
+
+  .duelAttacker {
+    animation: charge-top 1550ms cubic-bezier(0.16, 0.82, 0.2, 1) both;
+  }
+
+  .duelDefender {
+    animation: charge-bottom 1550ms cubic-bezier(0.16, 0.82, 0.2, 1) both;
+  }
+}

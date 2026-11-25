@@ -1,0 +1,42 @@
+export const CATALOG_SEMANTIC_IDS = {
+  // Catalog View
+  ROOT: "catalog-view-root",
+  HEADER_BANNER: "catalog-header-banner",
+  HEADER_BADGE: "catalog-header-badge",
+  HEADER_TITLE: "catalog-header-title",
+  HEADER_STATS_CURATED: "catalog-header-stats-curated",
+  HEADER_TAG_MAJAPAHIT: "catalog-header-tag-majapahit",
+  HEADER_TAG_PAJAJARAN: "catalog-header-tag-pajajaran",
+  HEADER_TAG_INSTRUMENTS: "catalog-header-tag-instruments",
+
+  FILTER_BAR: "catalog-filter-bar",
+  SEARCH_INPUT: "catalog-search-input",
+  FILTER_TYPE_GROUP: "catalog-filter-type-group",
+  FILTER_TYPE_BTN_PREFIX: "catalog-filter-type-btn-",
+  FILTER_KINGDOM_GROUP: "catalog-filter-kingdom-group",
+  FILTER_KINGDOM_BTN_PREFIX: "catalog-filter-kingdom-btn-",
+  FILTER_ROLE_GROUP: "catalog-filter-role-group",
+  FILTER_ROLE_BTN_PREFIX: "catalog-filter-role-btn-",
+  FILTER_SUMMARY_ROW: "catalog-filter-summary-row",
+  FILTER_RESET_BTN: "catalog-filter-reset-btn",
+
+  STATE_LOADING: "catalog-state-loading",
+  STATE_ERROR: "catalog-state-error",
+  STATE_EMPTY: "catalog-state-empty",
+  CARDS_GRID: "catalog-cards-grid",
+  PAGINATION: "catalog-pagination",
+  CARD_ITEM_PREFIX: "catalog-card-item-",
+  CARD_INSPECT_BTN_PREFIX: "catalog-card-inspect-btn-",
+  CARD_DETAIL_LINK_PREFIX: "catalog-card-detail-link-",
+
+  // Detail View
+  DETAIL_ROOT: "catalog-detail-view-root",
+  DETAIL_BACK_BTN: "catalog-detail-back-btn",
+  DETAIL_CARD_PREVIEW: "catalog-detail-card-preview",
+  DETAIL_CARD_STATS: "catalog-detail-card-stats",
+  DETAIL_INFO_SECTION: "catalog-detail-info-section",
+  DETAIL_VERIFICATION_STATUS: "catalog-detail-verification-status",
+  DETAIL_HISTORY_NOTES: "catalog-detail-history-notes",
+  DETAIL_CITATION_BOX: "catalog-detail-citation-box",
+  DETAIL_SOURCE_LINK: "catalog-detail-source-link",
+} as const;

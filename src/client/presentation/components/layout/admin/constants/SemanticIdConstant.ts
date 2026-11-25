@@ -1,0 +1,16 @@
+export const ADMIN_LAYOUT_SEMANTIC_IDS = {
+  SHELL: "admin-layout-shell",
+  SIDEBAR: "admin-layout-sidebar",
+  HEADER: "admin-layout-header",
+  BRAND_LINK: "admin-layout-brand-link",
+  SESSION_BADGE: "admin-layout-session-badge",
+  USER_BADGE: "admin-layout-user-badge",
+  NAV_CONTAINER: "admin-layout-nav-container",
+  NAV_ITEM_PREFIX: "admin-layout-nav-item-",
+  MOBILE_MENU_BTN: "admin-layout-mobile-menu-btn",
+  MOBILE_DRAWER: "admin-layout-mobile-drawer",
+  MOBILE_DRAWER_CLOSE_BTN: "admin-layout-mobile-drawer-close-btn",
+  HEADER_LOGOUT_BTN: "admin-layout-header-logout-btn",
+  LOGOUT_BTN: "admin-layout-logout-btn",
+  PUBLIC_HOME_LINK: "admin-layout-public-home-link",
+} as const;
