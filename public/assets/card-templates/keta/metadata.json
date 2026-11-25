@@ -1,0 +1,89 @@
+{
+  "slug": "keta",
+  "kingdom": "NUSANTARA_UMUM",
+  "width": 1024,
+  "height": 1505,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki - laki • Prajurit • Keta",
+      "text": "Laki - laki • Prajurit • Keta",
+      "bounds": [
+        354,
+        954,
+        668,
+        981
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Panglima Keta",
+      "text": "Panglima Keta",
+      "bounds": [
+        288,
+        855,
+        734,
+        919
+      ]
+    },
+    {
+      "name": "1.300",
+      "text": "1.300",
+      "bounds": [
+        215,
+        1083,
+        371,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        249,
+        1047,
+        327,
+        1068
+      ]
+    },
+    {
+      "name": "1.100",
+      "text": "1.100",
+      "bounds": [
+        669,
+        1083,
+        816,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        695,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Panglima dari Kerajaan Keta (kawasan pesisir Besuki/Tuban kuno) adalah\nkomandan tempur pesisir yang ulet, keras kepala, dan menguasai taktik\npertahanan pantai serta jalur perbukitan kapur Jawa Timur.",
+      "bounds": [
+        180,
+        1275,
+        844,
+        1348
+      ]
+    }
+  ]
+}

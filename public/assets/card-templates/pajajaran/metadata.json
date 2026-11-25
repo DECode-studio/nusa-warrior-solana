@@ -1,0 +1,89 @@
+{
+  "slug": "pajajaran",
+  "kingdom": "PAJAJARAN",
+  "width": 1024,
+  "height": 1506,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki-laki • Prajurit • Pajajaran",
+      "text": "Laki-laki • Prajurit • Pajajaran",
+      "bounds": [
+        337,
+        952,
+        703,
+        979
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Prajurit Pajajaran",
+      "text": "Prajurit Pajajaran",
+      "bounds": [
+        225,
+        855,
+        796,
+        925
+      ]
+    },
+    {
+      "name": "900",
+      "text": "900",
+      "bounds": [
+        235,
+        1083,
+        351,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        250,
+        1047,
+        326,
+        1068
+      ]
+    },
+    {
+      "name": "900",
+      "text": "900",
+      "bounds": [
+        685,
+        1083,
+        801,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        696,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Prajurit Sunda (Pajajaran) adalah kesatria tangguh dan lincah yang berakar\nkuat pada nilai kehormatan kasatriaan serta penguasaan medan\nperbukitan dan hutan lebat tanah Parahyangan.",
+      "bounds": [
+        173,
+        1274,
+        851,
+        1345
+      ]
+    }
+  ]
+}

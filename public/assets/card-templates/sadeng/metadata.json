@@ -1,0 +1,89 @@
+{
+  "slug": "sadeng",
+  "kingdom": "NUSANTARA_UMUM",
+  "width": 1024,
+  "height": 1505,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki - laki • Prajurit • Sadeng",
+      "text": "Laki - laki • Prajurit • Sadeng",
+      "bounds": [
+        338,
+        954,
+        684,
+        981
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Panglima Sadeng",
+      "text": "Panglima Sadeng",
+      "bounds": [
+        254,
+        855,
+        768,
+        919
+      ]
+    },
+    {
+      "name": "1.200",
+      "text": "1.200",
+      "bounds": [
+        215,
+        1083,
+        371,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        250,
+        1047,
+        326,
+        1068
+      ]
+    },
+    {
+      "name": "1.000",
+      "text": "1.000",
+      "bounds": [
+        661,
+        1083,
+        823,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        696,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Panglima dari Kerajaan Sadeng (wilayah Jember/Puger kuno) adalah panglima perang\nbertubuh tegap dan ahli strategi medan terjal yang menguasai pertahanan\nbenteng alam di antara pesisir selatan dan lereng pegunungan Hyang.",
+      "bounds": [
+        125,
+        1276,
+        900,
+        1349
+      ]
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "slug": "majapahit",
+  "kingdom": "MAJAPAHIT",
+  "width": 1024,
+  "height": 1505,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki - laki • Prajurit • Majapah",
+      "text": "Laki - laki • Prajurit • Majapahit",
+      "bounds": [
+        321,
+        954,
+        702,
+        981
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Panglima Majapahit",
+      "text": "Panglima Majapahit",
+      "bounds": [
+        204,
+        855,
+        819,
+        925
+      ]
+    },
+    {
+      "name": "1.200",
+      "text": "1.200",
+      "bounds": [
+        215,
+        1083,
+        371,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        249,
+        1047,
+        327,
+        1068
+      ]
+    },
+    {
+      "name": "1.000",
+      "text": "1.000",
+      "bounds": [
+        661,
+        1083,
+        823,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        695,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Mengenakan zirah berhias lambang Surya Majapahit dan memegang keris\npusaka, panglima perang Wilwatikta memimpin barisan tempur dengan wibawa\ntak tergoyahkan serta keahlian strategi darat maupun maritim yang disegani.",
+      "bounds": [
+        154,
+        1270,
+        870,
+        1341
+      ]
+    }
+  ]
+}

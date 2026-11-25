@@ -1,0 +1,89 @@
+{
+  "slug": "portugis",
+  "kingdom": "PORTUGIS",
+  "width": 1024,
+  "height": 1505,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki - laki • Prajurit • Portugi",
+      "text": "Laki - laki • Prajurit • Portugis",
+      "bounds": [
+        332,
+        954,
+        690,
+        981
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Prajurit Portugis",
+      "text": "Prajurit Portugis",
+      "bounds": [
+        245,
+        855,
+        775,
+        925
+      ]
+    },
+    {
+      "name": "1.000",
+      "text": "1.000",
+      "bounds": [
+        212,
+        1083,
+        374,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        249,
+        1047,
+        327,
+        1068
+      ]
+    },
+    {
+      "name": "750",
+      "text": "750",
+      "bounds": [
+        693,
+        1083,
+        794,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        695,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Prajurit Kerajaan Portugis (soldados) adalah serdadu ekspedisi maritim Eropa\nabad ke-16 yang terlatih bertempur di atas geladak\nkapal maupun garis pantai kolonial.",
+      "bounds": [
+        161,
+        1268,
+        862,
+        1339
+      ]
+    }
+  ]
+}

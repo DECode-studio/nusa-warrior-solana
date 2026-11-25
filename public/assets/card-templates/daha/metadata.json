@@ -1,0 +1,89 @@
+{
+  "slug": "daha",
+  "kingdom": "DAHA_KADIRI",
+  "width": 1024,
+  "height": 1505,
+  "layers": {},
+  "textElements": [
+    {
+      "name": "Laki - laki • Prajurit • Daha/Ka",
+      "text": "Laki - laki • Prajurit • Daha/Kadiri",
+      "bounds": [
+        307,
+        953,
+        715,
+        981
+      ]
+    },
+    {
+      "name": "Deskripsi",
+      "text": "Deskripsi",
+      "bounds": [
+        454,
+        1206,
+        570,
+        1233
+      ]
+    },
+    {
+      "name": "Prajurit Daha",
+      "text": "Prajurit Daha",
+      "bounds": [
+        299,
+        855,
+        723,
+        925
+      ]
+    },
+    {
+      "name": "900",
+      "text": "900",
+      "bounds": [
+        235,
+        1083,
+        351,
+        1128
+      ]
+    },
+    {
+      "name": "attack",
+      "text": "attack",
+      "bounds": [
+        250,
+        1047,
+        326,
+        1068
+      ]
+    },
+    {
+      "name": "800",
+      "text": "800",
+      "bounds": [
+        685,
+        1083,
+        801,
+        1128
+      ]
+    },
+    {
+      "name": "deffence",
+      "text": "deffence",
+      "bounds": [
+        696,
+        1046,
+        798,
+        1067
+      ]
+    },
+    {
+      "name": "description",
+      "text": "Prajurit Kerajaan Daha (Kadiri) adalah barisan infantri\ndan kavaleri tangguh yang terbiasa bertempur di medan lembah subur\nSungai Brantas serta jalur pegunungan Jawa Timur.",
+      "bounds": [
+        195,
+        1274,
+        829,
+        1346
+      ]
+    }
+  ]
+}
