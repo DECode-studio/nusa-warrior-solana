@@ -27,7 +27,8 @@ export type NusaPointSource =
   | "SHOP_ORDER_REFUND"
   | "SHOP_ORDER_REFUND_REVERSAL"
   | "CUSTOM_CARD_MINT"
-  | "TOPUP";
+  | "TOPUP"
+  | "NUSA_CLAIM";
 
 const EARNING_SOURCES: NusaPointSource[] = [
   "BATTLE_BOT_WIN",
@@ -207,4 +208,65 @@ export async function deductNusaPointsForCustomCardPrisma(
       createdAt: input.now ?? new Date(),
     },
   });
+}
+
+export async function claimUnclaimedNusaPrisma(
+  tx: PrismaTypes.TransactionClient,
+  input: {
+    userId: string;
+    claimId: string;
+    amount: number;
+    txSignature: string;
+    now?: Date;
+  },
+): Promise<{ claimedAmount: number; remainingUnclaimed: number }> {
+  if (input.amount <= 0) {
+    throw new Error("Jumlah klaim NUSA harus lebih besar dari 0.");
+  }
+
+  await tx.$queryRaw<Array<{ locked: number }>>(Prisma.sql`
+    WITH point_lock AS MATERIALIZED (
+      SELECT pg_advisory_xact_lock(8813044, hashtext(${input.userId}))
+    )
+    SELECT 1::int AS locked FROM point_lock
+  `);
+
+  const duplicateSig = await tx.nusaPointTransaction.findFirst({
+    where: { txSignature: input.txSignature },
+    select: { id: true },
+  });
+  if (duplicateSig) {
+    throw new Error("Signature transaksi klaim sudah pernah digunakan.");
+  }
+
+  const balanceAggregate = await tx.nusaPointTransaction.aggregate({
+    where: { userId: input.userId },
+    _sum: { amount: true },
+  });
+  const currentUnclaimed = Math.max(0, balanceAggregate._sum.amount ?? 0);
+
+  if (currentUnclaimed < input.amount) {
+    throw new Error(
+      `Saldo Unclaimed NUSA tidak mencukupi (${currentUnclaimed} NUSA).`,
+    );
+  }
+
+  const now = input.now ?? new Date();
+  await tx.nusaPointTransaction.create({
+    data: {
+      id: randomUUID(),
+      userId: input.userId,
+      amount: -input.amount,
+      source: "NUSA_CLAIM",
+      sourceId: input.claimId,
+      txSignature: input.txSignature,
+      claimedAt: now,
+      createdAt: now,
+    },
+  });
+
+  return {
+    claimedAmount: input.amount,
+    remainingUnclaimed: currentUnclaimed - input.amount,
+  };
 }
