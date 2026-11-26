@@ -7,13 +7,24 @@ export function proxy(request: NextRequest): NextResponse {
   const nonce = randomBytes(18).toString("base64");
   const requestId = randomUUID();
   const isDev = process.env.NODE_ENV !== "production";
+  const customSolanaRpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim();
+  let customSolanaOrigins = "";
+  if (customSolanaRpc) {
+    try {
+      const rpcUrl = new URL(customSolanaRpc);
+      const wsProtocol = rpcUrl.protocol === "https:" ? "wss:" : "ws:";
+      customSolanaOrigins = ` ${rpcUrl.origin} ${wsProtocol}//${rpcUrl.host}`;
+    } catch {
+      // Ignore malformed custom RPC URL
+    }
+  }
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' blob: data: https://excitech-id.my.id https://storage.excitech.id https://api.menu-kita.com",
-    "connect-src 'self'",
+    `connect-src 'self' https://api.devnet.solana.com wss://api.devnet.solana.com https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com${customSolanaOrigins}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
