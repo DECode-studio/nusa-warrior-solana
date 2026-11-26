@@ -653,9 +653,11 @@ model ShopOrder {
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
   paidAt              DateTime?
+  txSignature         String?
 
   @@index([userId, createdAt])
   @@index([paymentStatus, expiresAt])
+  @@index([txSignature])
   @@map("shop_orders")
 }
 
@@ -679,6 +681,7 @@ model TopupOrder {
   paymentInstructions Json?
   expiresAt           DateTime?
   paidAt              DateTime?
+  txSignature         String?
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
@@ -688,19 +691,22 @@ model TopupOrder {
 }
 
 model NusaPointTransaction {
-  id               String   @id
+  id               String    @id
   userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount           Int
   source           String
   sourceId         String
   opponentUserId   String?
-  createdAt        DateTime @default(now())
+  txSignature      String?
+  claimedAt        DateTime?
+  createdAt        DateTime  @default(now())
 
   @@unique([userId, source, sourceId])
   @@index([userId, createdAt])
   @@index([source, createdAt])
   @@index([opponentUserId, createdAt])
+  @@index([txSignature])
   @@map("nusa_point_transactions")
 }
 
