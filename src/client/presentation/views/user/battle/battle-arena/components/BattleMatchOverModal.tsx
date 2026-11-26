@@ -6,6 +6,7 @@ import type { CardEntity } from "@/client/domain/card/entity/card_entity";
 import { useTranslator } from "@/core/translator";
 import { BaseModal, Button } from "@/client/presentation/components/ui";
 import { CardVisual } from "@/client/presentation/components/CardVisual";
+import { SolanaVaultTxBadge } from "@/client/presentation/components/solana/SolanaVaultTxBadge";
 import { BATTLE_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
 import { BATTLE_TEXT_CONSTANT } from "../constants/TextConstant";
 
@@ -23,6 +24,9 @@ export interface BattleMatchOverModalProps {
   readonly rewardCard?: CardEntity | null;
   readonly rewardCardName?: string | null;
   readonly rewardCardQuantity?: number | null;
+  readonly vaultPda?: string | null;
+  readonly lockTxSignature?: string | null;
+  readonly settleTxSignature?: string | null;
   readonly onNewMatch: () => void;
   readonly onExitToLobby: () => void;
 }
@@ -41,6 +45,9 @@ export function BattleMatchOverModal({
   rewardCard = null,
   rewardCardName = null,
   rewardCardQuantity = null,
+  vaultPda = null,
+  lockTxSignature = null,
+  settleTxSignature = null,
   onNewMatch,
   onExitToLobby,
 }: BattleMatchOverModalProps): React.ReactElement | null {
@@ -121,6 +128,13 @@ export function BattleMatchOverModal({
           <p className="rounded-xl border border-amber/20 bg-amber/10 p-3 text-sm font-semibold text-amber-light">
             {t(BATTLE_TEXT_CONSTANT.LEAGUE_STAKE_NOT_TRANSFERRED)}
           </p>
+        )}
+        {(isQuickMatch || isLeagueMatch) && (vaultPda || lockTxSignature || settleTxSignature) && (
+          <SolanaVaultTxBadge
+            vaultPda={vaultPda}
+            lockTxSignature={lockTxSignature}
+            settleTxSignature={settleTxSignature}
+          />
         )}
 
         <div className="mt-6 flex flex-col gap-3">

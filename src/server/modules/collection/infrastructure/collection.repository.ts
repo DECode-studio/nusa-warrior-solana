@@ -8,17 +8,50 @@ import {
 } from "@/server/shared/db/embedded-store";
 import { isPrismaDriverEnabled, prisma } from "@/server/shared/db/prisma";
 import { cardRepository } from "@/server/modules/card/infrastructure/card.repository.impl";
+import { getVerifiedWalletCards } from "@/server/modules/solana/wallet-asset-reader.service";
 
 export interface OwnedCardDto {
   card: Awaited<ReturnType<typeof cardRepository.findMany>>[number];
   quantity: number;
+  walletQuantity?: number;
+  inVaultQuantity?: number;
+  tokenStandard?: "TOKEN_2022" | "MPL_CORE";
+  mintOrAssetAddresses?: string[];
 }
 
-export async function listOwnedCards(userId: string): Promise<OwnedCardDto[]> {
+export async function listOwnedCards(
+  userId: string,
+  options?: { bypassCache?: boolean }
+): Promise<OwnedCardDto[]> {
   const cards = await cardRepository.findMany({ includeWithdrawn: false });
   const cardsById = new Map(cards.map((card) => [card.id, card]));
 
   if (isPrismaDriverEnabled()) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { walletAddress: true },
+    });
+
+    const hasOnChainRegistry =
+      process.env.NUSA_STRICT_ONCHAIN_OWNERSHIP === "true" ||
+      cards.some((card) => Boolean(card.mintAddress));
+
+    if (user?.walletAddress && hasOnChainRegistry) {
+      const verified = await getVerifiedWalletCards({
+        userId,
+        walletAddress: user.walletAddress,
+        bypassCache: options?.bypassCache,
+      });
+      return verified.map((item) => ({
+        card: item.card,
+        quantity: item.quantity,
+        walletQuantity: item.walletQuantity,
+        inVaultQuantity: item.inVaultQuantity,
+        tokenStandard: item.tokenStandard,
+        mintOrAssetAddresses: item.mintOrAssetAddresses,
+      }));
+    }
+
     const owned = await prisma.userCard.findMany({ where: { userId, quantity: { gt: 0 } } });
     return owned.flatMap((item) => {
       const card = cardsById.get(item.cardId);

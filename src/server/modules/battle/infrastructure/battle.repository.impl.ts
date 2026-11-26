@@ -80,6 +80,10 @@ function toStoredSession(
     reconnectDeadlineAt: row.reconnectDeadlineAt?.toISOString() ?? null,
     opponentReconnectDeadlineAt: row.opponentReconnectDeadlineAt?.toISOString() ?? null,
     turnDeadlineAt: row.turnDeadlineAt?.toISOString() ?? null,
+    vaultPda: row.vaultPda ?? null,
+    playerLockTxSignature: row.playerLockTxSignature ?? null,
+    opponentLockTxSignature: row.opponentLockTxSignature ?? null,
+    settleTxSignature: row.settleTxSignature ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -1100,6 +1104,34 @@ export class BattleRepositoryImpl implements BattleRepository {
           session.turnDeadlineAt = null;
           session.updatedAt = now.toISOString();
         }
+        continue;
+      }
+      if (expiredOwner && expiredOpponent) {
+        const event = {
+          type: "TIMEOUT_DRAW",
+          auditSequence: (JSON.parse(session.eventsJson || "[]") as unknown[]).length,
+          cause: "BOTH_PLAYERS_DISCONNECTED_5M",
+          at: now.toISOString(),
+        };
+        if (isPrismaDriverEnabled()) {
+          await prisma.battleSession.updateMany({
+            where: { id: session.id, sequence: session.sequence, status: "ACTIVE" },
+            data: {
+              sequence: { increment: 1 },
+              eventsJson: appendAuditEvent(session.eventsJson, event),
+              status: "ABANDONED",
+              turnDeadlineAt: null,
+              updatedAt: now,
+            },
+          });
+        } else {
+          session.sequence += 1;
+          session.eventsJson = appendAuditEvent(session.eventsJson, event);
+          session.status = "ABANDONED";
+          session.turnDeadlineAt = null;
+          session.updatedAt = now.toISOString();
+        }
+        completed += 1;
         continue;
       }
       const state = JSON.parse(session.stateJson) as import("@/client/domain/battle/entity/battle_entity").BattleStateEntity;

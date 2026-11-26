@@ -34,8 +34,18 @@ export class ShopRepositoryImpl implements ShopRepository {
     return this.remoteDataSource.getPaymentMethods();
   }
 
-  public async claimFreeStarterPack(): Promise<PaymentOrderEntity> {
-    const model = await this.remoteDataSource.claimFreeStarterPack();
+  public async prepareFreeStarterPackMint(): Promise<{
+    starterPackCode: string;
+    cardSlugs: string[];
+    serializedTransactions: string[];
+  }> {
+    return this.remoteDataSource.prepareFreeStarterPackMint();
+  }
+
+  public async claimFreeStarterPack(
+    txSignatures?: string[]
+  ): Promise<PaymentOrderEntity> {
+    const model = await this.remoteDataSource.claimFreeStarterPack(txSignatures);
     return mapPaymentOrderModelToEntity(model);
   }
 

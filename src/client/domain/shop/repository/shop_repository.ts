@@ -14,7 +14,12 @@ export interface ShopRepository {
   getPaymentMethods(): Promise<ShopPaymentMethodsEntity>;
   getOrder(orderId: string): Promise<PaymentOrderEntity>;
   getTransactionHistory(query: TransactionHistoryQuery): Promise<TransactionHistoryPageEntity>;
-  claimFreeStarterPack(): Promise<PaymentOrderEntity>;
+  prepareFreeStarterPackMint(): Promise<{
+    starterPackCode: string;
+    cardSlugs: string[];
+    serializedTransactions: string[];
+  }>;
+  claimFreeStarterPack(txSignatures?: string[]): Promise<PaymentOrderEntity>;
   checkout(request: CheckoutPaymentRequest): Promise<PaymentOrderEntity>;
   getTopupTiers(): Promise<TopupTiersResponseEntity>;
   checkoutTopup(request: TopupCheckoutRequest): Promise<PaymentOrderEntity>;

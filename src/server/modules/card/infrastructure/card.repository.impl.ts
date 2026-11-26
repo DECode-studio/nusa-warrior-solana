@@ -74,6 +74,11 @@ export class CardRepositoryImpl implements CardRepository {
           creatorId: row.creatorId,
           rejectionReason: row.rejectionReason,
           imagePath: row.imagePath,
+          tokenStandard: row.tokenStandard,
+          mintAddress: row.mintAddress,
+          collectionAddress: row.collectionAddress,
+          metadataUri: row.metadataUri,
+          isRareEdition: row.isRareEdition,
           asset: firstAsset
             ? {
                 id: firstAsset.id,

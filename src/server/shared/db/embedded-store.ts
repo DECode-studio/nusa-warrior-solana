@@ -81,6 +81,11 @@ export interface StoredCardRecord {
   creatorId?: string | null;
   rejectionReason?: string | null;
   imagePath: string;
+  tokenStandard?: "TOKEN_2022" | "MPL_CORE";
+  mintAddress?: string | null;
+  collectionAddress?: string | null;
+  metadataUri?: string | null;
+  isRareEdition?: boolean;
   asset: StoredCardAssetRecord | null;
   createdAt: string;
   updatedAt: string;
@@ -164,6 +169,10 @@ export interface StoredBattleSessionRecord {
   reconnectDeadlineAt: string | null;
   opponentReconnectDeadlineAt?: string | null;
   turnDeadlineAt: string | null;
+  vaultPda?: string | null;
+  playerLockTxSignature?: string | null;
+  opponentLockTxSignature?: string | null;
+  settleTxSignature?: string | null;
   rngCommitment: string | null;
   rngSecret: string | null;
   rngCounter: number;

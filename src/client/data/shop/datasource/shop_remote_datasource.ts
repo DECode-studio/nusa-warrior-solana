@@ -24,10 +24,27 @@ export class ShopRemoteDataSource {
     return apiClient.get<ShopPaymentMethodsEntity>(API_ROUTES.SHOP.PAYMENT_METHODS);
   }
 
-  public async claimFreeStarterPack(): Promise<PaymentOrderApiModel> {
-    return apiClient.post<PaymentOrderApiModel, Record<string, never>>(
+  public async prepareFreeStarterPackMint(): Promise<{
+    starterPackCode: string;
+    cardSlugs: string[];
+    serializedTransactions: string[];
+  }> {
+    return apiClient.post<
+      {
+        starterPackCode: string;
+        cardSlugs: string[];
+        serializedTransactions: string[];
+      },
+      Record<string, never>
+    >("/api/v1/shop/claim-starter/prepare", {});
+  }
+
+  public async claimFreeStarterPack(
+    txSignatures?: string[]
+  ): Promise<PaymentOrderApiModel> {
+    return apiClient.post<PaymentOrderApiModel, { txSignatures?: string[] }>(
       API_ROUTES.SHOP.CLAIM_STARTER,
-      {}
+      txSignatures?.length ? { txSignatures } : {}
     );
   }
 
