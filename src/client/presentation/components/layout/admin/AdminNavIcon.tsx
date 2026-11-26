@@ -11,6 +11,7 @@ import {
   Settings,
   CreditCard,
   BookOpen,
+  Globe,
 } from "lucide-react";
 
 interface AdminNavIconProps {
@@ -44,6 +45,8 @@ export function AdminNavIcon({
       return <CreditCard className={className} aria-hidden="true" />;
     case "BookOpen":
       return <BookOpen className={className} aria-hidden="true" />;
+    case "Globe":
+      return <Globe className={className} aria-hidden="true" />;
     case "Layers":
     case "cards":
     default:

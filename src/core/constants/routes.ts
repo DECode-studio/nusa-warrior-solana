@@ -76,6 +76,8 @@ export const ROUTES = {
     `/${lang}/admin/settings`,
   ADMIN_PAYMENT_GATEWAY: (lang: SupportedLocale = DEFAULT_LOCALE) =>
     `/${lang}/admin/payment-gateway`,
+  ADMIN_CHAIN_CONFIG: (lang: SupportedLocale = DEFAULT_LOCALE) =>
+    `/${lang}/admin/chain-config`,
 
   // Backward-compatible aliases pointing to new categorized routes
   BATTLE: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/user/battle/lobby`,
@@ -198,5 +200,11 @@ export const ADMIN_NAV_ITEMS: readonly PanelNavItem[] = [
     href: ROUTES.ADMIN_PAYMENT_GATEWAY,
     labelKey: "adminNav.paymentGateway",
     icon: "CreditCard",
+  },
+  {
+    key: "chainConfig",
+    href: ROUTES.ADMIN_CHAIN_CONFIG,
+    labelKey: "adminNav.chainConfig",
+    icon: "Globe",
   },
 ] as const;
