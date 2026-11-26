@@ -22,6 +22,10 @@ import {
   getSettlerKeypairFromEnv,
 } from "./nusa-vault-tx-builder.service";
 import { invalidateWalletAssetCache } from "./wallet-asset-reader.service";
+import {
+  buildAndPinCardMetadata,
+  isPinataConfigured,
+} from "./pinata-ipfs.service";
 
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
@@ -175,20 +179,17 @@ export async function ensureRegularCardMint(cardSlug: string): Promise<{
 
   const card = await prisma.card.findUnique({
     where: { slug: cardSlug },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      mintAddress: true,
-      metadataUri: true,
-      tokenStandard: true,
-    },
   });
   if (!card) {
     throw AppError.notFound(`Kartu '${cardSlug}' tidak ditemukan.`);
   }
 
-  const metadataUri = card.metadataUri || resolveCardMetadataUri(card.slug);
+  const metadataUri =
+    card.metadataUri && card.metadataUri.includes("/ipfs/")
+      ? card.metadataUri
+      : isPinataConfigured()
+        ? await buildAndPinCardMetadata(card)
+        : card.metadataUri || resolveCardMetadataUri(card.slug);
   if (card.mintAddress) {
     return {
       cardId: card.id,
