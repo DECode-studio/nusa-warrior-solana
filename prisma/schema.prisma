@@ -95,6 +95,11 @@ enum ShopOrderPaymentStatus {
   EXPIRED
 }
 
+enum CardTokenStandard {
+  TOKEN_2022
+  MPL_CORE
+}
+
 model User {
   id           String               @id @default(cuid())
   walletAddress String?             @unique
@@ -186,6 +191,11 @@ model Card {
   customStatus        CustomCardStatus?
   rejectionReason     String?
   imagePath           String
+  tokenStandard       CardTokenStandard      @default(TOKEN_2022)
+  mintAddress         String?                @unique
+  collectionAddress   String?
+  metadataUri         String?
+  isRareEdition       Boolean                @default(false)
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
   assets              CardAsset[]
@@ -195,6 +205,7 @@ model Card {
   owners              UserCard[]
   ledgerEntries       CardLedgerEntry[]
   escrowItems         CardEscrowItem[]
+  nftInstances        CardNftInstance[]
 
   @@index([isCustom, customStatus])
   @@index([creatorId])
@@ -299,6 +310,7 @@ model CardLedgerTransaction {
   referenceId    String?
   actorUserId    String?
   actor          User?             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  txSignature    String?           @unique
   entries        CardLedgerEntry[]
   escrow         CardEscrow?       @relation("EscrowReservation")
   createdAt      DateTime          @default(now())
@@ -333,6 +345,9 @@ model CardEscrow {
   idempotencyKey       String                 @unique
   reserveTransactionId String                 @unique
   reserveTransaction   CardLedgerTransaction  @relation("EscrowReservation", fields: [reserveTransactionId], references: [id], onDelete: Restrict)
+  vaultPda             String?
+  lockTxSignature      String?
+  settleTxSignature    String?
   items                CardEscrowItem[]
   expiresAt            DateTime?
   createdAt            DateTime               @default(now())
@@ -341,6 +356,24 @@ model CardEscrow {
   @@index([referenceType, referenceId, status])
   @@index([ownerUserId, status])
   @@map("card_escrows")
+}
+
+model CardNftInstance {
+  id                String   @id @default(cuid())
+  cardId            String
+  card              Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  assetAddress      String   @unique
+  collectionAddress String?
+  ownerWallet       String
+  editionNumber     Int?
+  mintTxSignature   String?
+  status            String   @default("ACTIVE")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([cardId])
+  @@index([ownerWallet, status])
+  @@map("card_nft_instances")
 }
 
 model CardEscrowItem {
@@ -416,6 +449,10 @@ model BattleSession {
   rngDrawsJson  String   @default("[]") @db.Text
   stateJson     String   @db.Text
   eventsJson    String   @db.Text
+  vaultPda                String?
+  playerLockTxSignature   String?
+  opponentLockTxSignature String?
+  settleTxSignature       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -674,6 +711,20 @@ model PaymentGatewaySetting {
   updatedAt       DateTime    @updatedAt
 
   @@map("payment_gateway_settings")
+}
+
+model SolanaRpcEndpoint {
+  id        String   @id @default(cuid())
+  label     String
+  url       String   @unique
+  network   String   @default("devnet")
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([network, isActive, priority])
+  @@map("solana_rpc_endpoints")
 }
 
 model TeamMember {
