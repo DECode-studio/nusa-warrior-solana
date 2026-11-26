@@ -36,8 +36,18 @@ export class ShopUseCase {
     return this.shopRepository.getTransactionHistory(query);
   }
 
-  public async claimFreeStarterPack(): Promise<PaymentOrderEntity> {
-    return this.shopRepository.claimFreeStarterPack();
+  public async prepareFreeStarterPackMint(): Promise<{
+    starterPackCode: string;
+    cardSlugs: string[];
+    serializedTransactions: string[];
+  }> {
+    return this.shopRepository.prepareFreeStarterPackMint();
+  }
+
+  public async claimFreeStarterPack(
+    txSignatures?: string[]
+  ): Promise<PaymentOrderEntity> {
+    return this.shopRepository.claimFreeStarterPack(txSignatures);
   }
 
   public async checkout(
