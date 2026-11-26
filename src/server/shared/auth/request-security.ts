@@ -6,10 +6,11 @@ export function assertSameOriginMutation(request: Request): void {
   if (!origin) {
     throw AppError.forbidden("Permintaan lintas origin tidak diizinkan.");
   }
+  const requestOrigin = new URL(request.url).origin;
   const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL
     ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
-    : new URL(request.url).origin;
-  if (origin !== configuredOrigin) {
+    : requestOrigin;
+  if (origin !== configuredOrigin && origin !== requestOrigin) {
     throw AppError.forbidden("Permintaan lintas origin tidak diizinkan.");
   }
 }
