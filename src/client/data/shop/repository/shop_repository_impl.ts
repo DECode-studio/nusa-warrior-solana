@@ -66,6 +66,23 @@ export class ShopRepositoryImpl implements ShopRepository {
     return mapPaymentOrderModelToEntity(model);
   }
 
+  public async prepareNusaBurnCheckout(starterPackCode: string): Promise<{
+    serializedTransaction: string;
+    amountNusa: number;
+  }> {
+    return this.remoteDataSource.prepareNusaBurnCheckout(starterPackCode);
+  }
+
+  public async confirmNusaBurnCheckout(input: {
+    starterPackCode: string;
+    txSignature: string;
+    buyerName?: string;
+    buyerEmail?: string;
+  }): Promise<PaymentOrderEntity> {
+    const model = await this.remoteDataSource.confirmNusaBurnCheckout(input);
+    return mapPaymentOrderModelToEntity(model);
+  }
+
   public async getTopupTiers(): Promise<TopupTiersResponseEntity> {
     return this.remoteDataSource.getTopupTiers();
   }

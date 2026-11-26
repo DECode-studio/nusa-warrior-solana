@@ -26,6 +26,13 @@ export class CustomCardRepositoryImpl implements CustomCardRepository {
     return mapPricingModelToEntity(raw);
   }
 
+  public async prepareBurn(): Promise<{
+    requiresBurn: boolean;
+    serializedTransaction: string | null;
+  }> {
+    return this.dataSource.prepareBurn();
+  }
+
   public async createCustomCard(
     params: CreateCustomCardParams
   ): Promise<CreateCustomCardResultEntity> {
@@ -47,6 +54,9 @@ export class CustomCardRepositoryImpl implements CustomCardRepository {
     }
     if (params.cropOffsetY !== undefined) {
       formData.append("cropOffsetY", String(params.cropOffsetY));
+    }
+    if (params.txSignature) {
+      formData.append("txSignature", params.txSignature);
     }
 
     const raw = await this.dataSource.createCustomCard(formData);

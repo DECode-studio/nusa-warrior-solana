@@ -56,6 +56,22 @@ export class ShopUseCase {
     return this.shopRepository.checkout(request);
   }
 
+  public async prepareNusaBurnCheckout(starterPackCode: string): Promise<{
+    serializedTransaction: string;
+    amountNusa: number;
+  }> {
+    return this.shopRepository.prepareNusaBurnCheckout(starterPackCode);
+  }
+
+  public async confirmNusaBurnCheckout(input: {
+    starterPackCode: string;
+    txSignature: string;
+    buyerName?: string;
+    buyerEmail?: string;
+  }): Promise<PaymentOrderEntity> {
+    return this.shopRepository.confirmNusaBurnCheckout(input);
+  }
+
   public async getTopupTiers(): Promise<TopupTiersResponseEntity> {
     return this.shopRepository.getTopupTiers();
   }

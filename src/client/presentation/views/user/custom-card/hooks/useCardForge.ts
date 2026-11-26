@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo, useTransition } from "react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useTranslator } from "@/core/translator";
 import { getService } from "@/core/di/container";
 import { CUSTOM_CARD_USECASE_TOKEN } from "@/core/di/tokens";
+import { sendBase64SolanaTx } from "@/core/utils/solana-tx-client";
 import type {
   CustomCardPricingEntity,
   CreateCustomCardResultEntity,
@@ -81,6 +83,8 @@ export interface UseCardForgeReturn {
 
 export function useCardForge(): UseCardForgeReturn {
   const { t } = useTranslator();
+  const { connection } = useConnection();
+  const { connected, publicKey, signTransaction, sendTransaction } = useWallet();
   const customCardUseCase = useMemo(() => getService(CUSTOM_CARD_USECASE_TOKEN), []);
   const [isSubmitting, startTransition] = useTransition();
 
@@ -207,6 +211,24 @@ export function useCardForge(): UseCardForgeReturn {
 
     startTransition(async () => {
       try {
+        let txSignature: string | undefined;
+        if (pricing && pricing.nextCost > 0) {
+          if (!connected || !publicKey) {
+            throw new Error(
+              "Hubungkan dompet Solana (Phantom) terlebih dahulu untuk burn NUSA."
+            );
+          }
+          const prepared = await customCardUseCase.prepareBurn();
+          if (prepared.requiresBurn && prepared.serializedTransaction) {
+            txSignature = await sendBase64SolanaTx({
+              serializedTransaction: prepared.serializedTransaction,
+              connection,
+              signTransaction,
+              sendTransaction,
+            });
+          }
+        }
+
         const result: CreateCustomCardResultEntity = await customCardUseCase.createCustomCard({
           name,
           kingdom,
@@ -220,6 +242,7 @@ export function useCardForge(): UseCardForgeReturn {
           cropScale,
           cropOffsetX,
           cropOffsetY,
+          txSignature,
         });
 
         setSuccessCard(result.card);

@@ -21,6 +21,7 @@ export interface CreateCustomCardParams {
   cropScale?: number;
   cropOffsetX?: number;
   cropOffsetY?: number;
+  txSignature?: string;
 }
 
 export interface CreateCustomCardResultEntity {

@@ -11,6 +11,7 @@ import type {
 } from "@/client/domain/shop/entity/shop_entity";
 import { getService } from "@/core/di/container";
 import { AUTH_USECASE_TOKEN, SHOP_USECASE_TOKEN } from "@/core/di/tokens";
+import { sendBase64SolanaTx } from "@/core/utils/solana-tx-client";
 import { useTranslator } from "@/core/translator";
 import { gamelanAudio } from "@/core/utils/audio-synth";
 import { useUserOnboardingStore } from "@/client/presentation/stores/onboardingStore";
@@ -49,7 +50,7 @@ export interface UseShopReturn {
 export function useShop(): UseShopReturn {
   const { t } = useTranslator();
   const { connection } = useConnection();
-  const { connected, publicKey, sendTransaction, signAllTransactions } = useWallet();
+  const { connected, publicKey, signTransaction, sendTransaction, signAllTransactions } = useWallet();
   const [packs, setPacks] = useState<StarterPackEntity[]>([]);
   const [recentOrders, setRecentOrders] = useState<PaymentOrderEntity[]>([]);
   const [nusaPointBalance, setNusaPointBalance] = useState(0);
@@ -226,17 +227,30 @@ export function useShop(): UseShopReturn {
   ): Promise<void> => {
     event.preventDefault();
     if (!selectedPack) return;
+    if (!connected || !publicKey) {
+      setErrorMsg("Hubungkan dompet Solana (Phantom) terlebih dahulu untuk membayar dengan NUSA.");
+      return;
+    }
     setProcessing(true);
     setErrorMsg(null);
     try {
       const shopUseCase = getService(SHOP_USECASE_TOKEN);
-      const order = await shopUseCase.checkout({
+      const prepared = await shopUseCase.prepareNusaBurnCheckout(selectedPack.code);
+
+      const txSignature = await sendBase64SolanaTx({
+        serializedTransaction: prepared.serializedTransaction,
+        connection,
+        signTransaction,
+        sendTransaction,
+      });
+
+      const order = await shopUseCase.confirmNusaBurnCheckout({
+        starterPackCode: selectedPack.code,
+        txSignature,
         buyerName: buyerName.trim() || t(SHOP_TEXT_CONSTANT.DEFAULT_BUYER_NAME),
         buyerEmail: buyerEmail.trim() || "pemain@nusantaracard.id",
-        starterPackCode: selectedPack.code,
-        ...(paymentMethod && paymentChannel ? { paymentMethod, paymentChannel } : {}),
-        pointsToUse,
       });
+
       setLatestOrderReceipt(order);
       setRecentOrders((prev) => [order, ...prev]);
       if (order.paymentStatus === "PAID") {
@@ -244,8 +258,12 @@ export function useShop(): UseShopReturn {
         setOpeningReceipt(order);
       }
       await loadShop();
-    } catch {
-      setErrorMsg(SHOP_TEXT_CONSTANT.CHECKOUT_ERROR);
+    } catch (err: unknown) {
+      setErrorMsg(
+        err instanceof Error && err.message
+          ? err.message
+          : SHOP_TEXT_CONSTANT.CHECKOUT_ERROR
+      );
     } finally {
       setProcessing(false);
     }
