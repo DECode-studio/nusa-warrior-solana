@@ -56,6 +56,10 @@ export interface BattleSessionView {
   storyKingdom?: "MAJAPAHIT" | "PAJAJARAN" | null;
   storyMissionId?: string | null;
   storyChoiceId?: string | null;
+  vaultPda?: string | null;
+  playerLockTxSignature?: string | null;
+  opponentLockTxSignature?: string | null;
+  settleTxSignature?: string | null;
   rngCommitment: string | null;
   rngAudit?: {
     algorithm: string;
@@ -221,6 +225,10 @@ function toSessionView(record: {
   storyKingdom?: "MAJAPAHIT" | "PAJAJARAN" | null;
   storyMissionId?: string | null;
   storyChoiceId?: string | null;
+  vaultPda?: string | null;
+  playerLockTxSignature?: string | null;
+  opponentLockTxSignature?: string | null;
+  settleTxSignature?: string | null;
 }, viewerUserId?: string): BattleSessionView {
   const canonicalState = JSON.parse(record.stateJson) as BattleStateEntity;
   const isSecondPlayer = Boolean(record.isQuickMatch && viewerUserId && record.opponentUserId === viewerUserId);
@@ -233,6 +241,10 @@ function toSessionView(record: {
     status: record.status,
     rulesVersion: record.rulesVersion,
     turnDeadlineAt: record.turnDeadlineAt,
+    vaultPda: record.vaultPda ?? null,
+    playerLockTxSignature: record.playerLockTxSignature ?? null,
+    opponentLockTxSignature: record.opponentLockTxSignature ?? null,
+    settleTxSignature: record.settleTxSignature ?? null,
     state: record.status === "ACTIVE" || record.isQuickMatch ? redactState(state) : state,
     rngCommitment: record.rngCommitment,
     isQuickMatch: Boolean(record.isQuickMatch),
