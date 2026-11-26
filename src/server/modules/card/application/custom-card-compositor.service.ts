@@ -4,7 +4,10 @@ import path from "node:path";
 import sharp from "sharp";
 import { parse as parseFont, type Font } from "opentype.js";
 import type { Kingdom, CharacterGender, CharacterRole } from "@prisma/client";
-import { RemoteFileStorageService } from "@/server/shared/storage/remote-file-storage.service";
+import {
+  isPinataConfigured,
+  pinFileBufferToIpfs,
+} from "@/server/modules/solana/pinata-ipfs.service";
 import {
   TEMPLATE_THEME_COLORS,
   DEFAULT_TEMPLATE_THEME_COLORS,
@@ -250,21 +253,25 @@ export class CustomCardCompositorService {
       .webp({ quality: 92, effort: 4 })
       .toBuffer();
 
-    // 6. Upload langsung ke Remote File Storage API (Excitech / Menu Kita Storage)
-    const remoteResult = await RemoteFileStorageService.uploadFile({
-      folder: "cards/custom",
-      name: input.slug,
-      buffer: webpBuffer,
-      mimeType: "image/webp",
-    });
-
-    if (remoteResult?.url) {
-      return {
-        imagePath: remoteResult.url,
-      };
+    // 6. Upload langsung ke Pinata IPFS jika PINATA_JWT terkonfigurasi
+    if (isPinataConfigured()) {
+      try {
+        const pinned = await pinFileBufferToIpfs({
+          buffer: webpBuffer,
+          fileName: `${input.slug}.webp`,
+          mimeType: "image/webp",
+        });
+        if (pinned?.url) {
+          return {
+            imagePath: pinned.url,
+          };
+        }
+      } catch {
+        // Fallback ke disk lokal jika upload Pinata gagal
+      }
     }
 
-    // Graceful Fallback: Simpan ke disk lokal jika remote storage tidak merespons
+    // Graceful Fallback: Simpan ke disk lokal jika Pinata tidak dikonfigurasi/gagal
     const outputDir = path.resolve(process.cwd(), "public/cards/custom");
     await fs.mkdir(outputDir, { recursive: true });
     const outputFilePath = path.join(outputDir, `${input.slug}.webp`);

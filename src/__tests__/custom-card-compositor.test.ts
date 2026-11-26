@@ -6,15 +6,14 @@ import sharp from "sharp";
 vi.mock("server-only", () => ({}));
 
 import { CustomCardCompositorService } from "@/server/modules/card/application/custom-card-compositor.service";
-import { RemoteFileStorageService } from "@/server/shared/storage/remote-file-storage.service";
+import * as pinataService from "@/server/modules/solana/pinata-ipfs.service";
 
 describe("CustomCardCompositorService", () => {
-  it("harus berhasil me-render kartu dan mengembalikan URL remote storage jika upload sukses", async () => {
-    vi.spyOn(RemoteFileStorageService, "uploadFile").mockResolvedValueOnce({
-      url: "https://excitech-id.my.id/files/cards/custom/test-ksatria-remote.webp",
-      path: "files/cards/custom/test-ksatria-remote.webp",
-      format: "image/webp",
-      name: "test-ksatria-remote.webp",
+  it("harus berhasil me-render kartu dan mengembalikan URL IPFS Pinata jika upload sukses", async () => {
+    vi.spyOn(pinataService, "isPinataConfigured").mockReturnValueOnce(true);
+    vi.spyOn(pinataService, "pinFileBufferToIpfs").mockResolvedValueOnce({
+      cid: "QmTestCustomCardCid",
+      url: "https://gateway.pinata.cloud/ipfs/QmTestCustomCardCid",
     });
 
     const dummyArtwork = await sharp({
@@ -41,12 +40,12 @@ describe("CustomCardCompositorService", () => {
     });
 
     expect(result.imagePath).toBe(
-      "https://excitech-id.my.id/files/cards/custom/test-ksatria-remote.webp"
+      "https://gateway.pinata.cloud/ipfs/QmTestCustomCardCid"
     );
   });
 
-  it("harus fallback menyimpan ke disk lokal jika remote storage upload mengembalikan null", async () => {
-    vi.spyOn(RemoteFileStorageService, "uploadFile").mockResolvedValueOnce(null);
+  it("harus fallback menyimpan ke disk lokal jika Pinata tidak dikonfigurasi", async () => {
+    vi.spyOn(pinataService, "isPinataConfigured").mockReturnValueOnce(false);
 
     const dummyArtwork = await sharp({
       create: {
