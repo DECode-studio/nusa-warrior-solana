@@ -63,12 +63,8 @@ export function ShopCheckoutPanel({
 
   const isFree = Boolean(selectedPack?.isFree);
   const isBooster = selectedPack?.packType === "BOOSTER" || selectedPack?.code.includes("BOOSTER");
-  const isStarter = selectedPack?.isStarter || selectedPack?.code.includes("STARTER");
-  const maxPoints = selectedPack
-    ? isBooster ? Math.floor(selectedPack.priceIdr * 0.6) : isStarter ? selectedPack.priceIdr : 0
-    : 0;
-  const appliedPoints = Math.min(pointsToUse, nusaPointBalance, maxPoints);
-  const amountDue = Math.max(0, (selectedPack?.priceIdr ?? 0) - appliedPoints);
+  const priceNusa = selectedPack?.priceIdr ?? 0;
+  const hasEnoughNusa = nusaPointBalance >= priceNusa;
 
   return (
     <aside className="space-y-5 lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
@@ -135,7 +131,7 @@ export function ShopCheckoutPanel({
               </Button>
             </div>
           ) : (
-            /* Payment checkout */
+            /* NUSA Token Burn Checkout */
             <form
               id={SHOP_SEMANTIC_IDS.CHECKOUT_FORM}
               onSubmit={(e) => void onSubmit(e)}
@@ -152,135 +148,33 @@ export function ShopCheckoutPanel({
                     <span>5 Kartu Acak · Garansi 1 High-End</span>
                   </div>
                 )}
-                <div className="mt-1 font-display text-base font-bold text-amber-light">
-                  {formatIdrCurrency(selectedPack.priceIdr)}
+                <div className="mt-2 flex items-baseline justify-between border-t border-border-base pt-2">
+                  <span className="text-subtle">Harga Paket</span>
+                  <span className="font-display text-lg font-bold text-amber-light">
+                    {priceNusa.toLocaleString("id-ID")} NUSA
+                  </span>
                 </div>
-                <div className="mt-3 rounded-lg border border-border-base bg-surface-base/50 p-3">
-                  <label htmlFor="shop-nusa-points" className="flex items-center justify-between gap-3 text-xs font-semibold text-cream">
-                    <span>Gunakan Nusa Point</span>
-                    <span className="flex items-center gap-1.5 text-amber-light">
-                      <span>Saldo: {nusaPointBalance.toLocaleString("id-ID")} poin</span>
-                      {onNavigateToTopup && (
-                        <button
-                          type="button"
-                          onClick={onNavigateToTopup}
-                          className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-400/30 transition-colors cursor-pointer"
-                        >
-                          + Top Up
-                        </button>
-                      )}
-                    </span>
-                  </label>
-                  <input
-                    id="shop-nusa-points"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={Math.min(maxPoints, nusaPointBalance)}
-                    step={1}
-                    value={pointsToUse}
-                    onChange={(event) => onPointsToUseChange(Math.max(0, Math.min(Math.floor(Number(event.target.value) || 0), maxPoints, nusaPointBalance)))}
-                    disabled={processing || nusaPointBalance === 0}
-                    className="mt-2 min-h-10 w-full rounded-lg border border-border-base bg-surface-base px-3 text-sm text-cream outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
-                    aria-describedby="shop-point-limit"
-                  />
-                  <p id="shop-point-limit" className="mt-1 text-[11px] text-subtle">
-                    {isBooster
-                      ? `Maksimal ${maxPoints.toLocaleString("id-ID")} poin (diskon 60%).`
-                      : `Starter Pack dapat dibayar penuh dengan ${maxPoints.toLocaleString("id-ID")} poin.`}
-                    {" Promo lain tidak dapat digabung dengan poin."}
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="text-subtle">Saldo Nusa Token Anda</span>
+                  <span className="flex items-center gap-1.5 font-semibold text-cream">
+                    <span>{nusaPointBalance.toLocaleString("id-ID", { maximumFractionDigits: 2 })} NUSA</span>
+                    {onNavigateToTopup && (
+                      <button
+                        type="button"
+                        onClick={onNavigateToTopup}
+                        className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-400/30 transition-colors cursor-pointer"
+                      >
+                        + Top Up
+                      </button>
+                    )}
+                  </span>
+                </div>
+                {!hasEnoughNusa && (
+                  <p className="mt-2 rounded-lg border border-amber/30 bg-amber/10 p-2 text-[11px] text-amber-light">
+                    Saldo NUSA belum mencukupi. Lakukan Top Up (Swap IDRC/USDC ke NUSA) atau Claim reward Anda.
                   </p>
-                  <div className="mt-2 flex justify-between text-xs">
-                    <span className="text-subtle">Dibayar dengan poin</span>
-                    <span className="font-semibold text-emerald-light">{appliedPoints.toLocaleString("id-ID")} poin</span>
-                  </div>
-                  <div className="mt-1 flex justify-between text-sm">
-                    <span className="text-subtle">Sisa pembayaran</span>
-                    <span className="font-bold text-cream">{formatIdrCurrency(amountDue)}</span>
-                  </div>
-                </div>
+                )}
               </div>
-
-              {amountDue > 0 && <InputField
-                id={SHOP_SEMANTIC_IDS.BUYER_NAME_INPUT}
-                label={t(SHOP_TEXT_CONSTANT.BUYER_NAME_LABEL)}
-                required
-                value={buyerName}
-                onChange={(e) => onBuyerNameChange(e.target.value)}
-                placeholder={t(SHOP_TEXT_CONSTANT.BUYER_NAME_PLACEHOLDER)}
-                sizeVariant="sm"
-              />}
-
-              {amountDue > 0 && <InputField
-                id={SHOP_SEMANTIC_IDS.BUYER_EMAIL_INPUT}
-                label={t(SHOP_TEXT_CONSTANT.BUYER_EMAIL_LABEL)}
-                type="email"
-                required
-                value={buyerEmail}
-                onChange={(e) => onBuyerEmailChange(e.target.value)}
-                placeholder={t(SHOP_TEXT_CONSTANT.BUYER_EMAIL_PLACEHOLDER)}
-                sizeVariant="sm"
-              />}
-
-              {amountDue > 0 && <div className="space-y-2">
-                <span className="text-xs font-semibold text-cream">
-                  {t(SHOP_TEXT_CONSTANT.PAYMENT_METHOD_LABEL)}
-                </span>
-                <div
-                  id={SHOP_SEMANTIC_IDS.PAYMENT_METHOD_GROUP}
-                  className="grid grid-cols-2 gap-2"
-                >
-                  <Button
-                    id={SHOP_SEMANTIC_IDS.PAYMENT_QRIS_BTN}
-                    type="button"
-                    onClick={() => onPaymentMethodChange("QRIS")}
-                    variant={
-                      paymentMethod === "QRIS" ? "primary" : "secondary"
-                    }
-                    size="sm"
-                    leftIcon={<QrCode className="h-4 w-4" />}
-                  >
-                    {t(SHOP_TEXT_CONSTANT.PAYMENT_QRIS_LABEL)}
-                  </Button>
-                  <Button
-                    id={SHOP_SEMANTIC_IDS.PAYMENT_VA_BTN}
-                    type="button"
-                    onClick={() => onPaymentMethodChange("VIRTUAL_ACCOUNT")}
-                    variant={
-                      paymentMethod === "VIRTUAL_ACCOUNT" ? "primary" : "secondary"
-                    }
-                    size="sm"
-                    leftIcon={<CreditCard className="h-4 w-4" />}
-                  >
-                    {t(SHOP_TEXT_CONSTANT.PAYMENT_VA_LABEL)}
-                  </Button>
-                </div>
-              </div>}
-
-              {amountDue > 0 && paymentMethod === "VIRTUAL_ACCOUNT" && (
-                <div className="space-y-2">
-                  <label htmlFor="shop-va-channel" className="text-xs font-semibold text-cream">
-                    Bank virtual account
-                  </label>
-                  <select
-                    id="shop-va-channel"
-                    value={paymentChannel}
-                    onChange={(event) => onPaymentChannelChange(event.target.value)}
-                    disabled={processing || paymentChannels.filter((channel) => channel.paymentMethod === "VIRTUAL_ACCOUNT").length === 0}
-                    className="min-h-11 w-full rounded-xl border border-border-base bg-surface-base px-3 text-sm text-cream outline-none transition-colors hover:border-border-strong focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {paymentChannels.filter((channel) => channel.paymentMethod === "VIRTUAL_ACCOUNT").map((channel) => (
-                      <option key={channel.code} value={channel.code}>{channel.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {amountDue > 0 && paymentChannels.length === 0 && (
-                <p role="status" className="rounded-xl border border-amber/20 bg-amber/10 p-3 text-xs text-amber-light">
-                  Kanal pembayaran belum tersedia. Coba muat ulang halaman atau hubungi admin.
-                </p>
-              )}
 
               {errorMsg && (
                 <UserFeedback
@@ -295,14 +189,12 @@ export function ShopCheckoutPanel({
                 type="submit"
                 variant="primary"
                 size="md"
-                disabled={processing || (amountDue > 0 && (paymentChannels.length === 0 || !paymentChannel))}
-                className="w-full"
+                disabled={processing || !hasEnoughNusa}
+                className="w-full font-bold"
               >
                 {processing
-                  ? t(SHOP_TEXT_CONSTANT.PROCESSING_CHECKOUT)
-                  : amountDue === 0
-                    ? `Tukar dengan ${appliedPoints.toLocaleString("id-ID")} poin`
-                    : `${t(SHOP_TEXT_CONSTANT.SUBMIT_CHECKOUT)} (${formatIdrCurrency(amountDue)})`}
+                  ? "Memproses Burn NUSA..."
+                  : `Bayar & Burn ${priceNusa.toLocaleString("id-ID")} NUSA`}
               </Button>
             </form>
           )

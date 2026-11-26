@@ -61,6 +61,11 @@ export async function POST(request: Request): Promise<Response> {
     const cropScale = cropScaleRaw !== null ? Number(cropScaleRaw) : 1;
     const cropOffsetX = cropOffsetXRaw !== null ? Number(cropOffsetXRaw) : 0;
     const cropOffsetY = cropOffsetYRaw !== null ? Number(cropOffsetYRaw) : 0;
+    const txSignatureRaw = formData.get("txSignature");
+    const txSignature =
+      typeof txSignatureRaw === "string" && txSignatureRaw.trim().length > 0
+        ? txSignatureRaw.trim()
+        : undefined;
 
     const result = await createCustomCardUseCase(session.userId, {
       name,
@@ -75,6 +80,7 @@ export async function POST(request: Request): Promise<Response> {
       cropScale: Number.isFinite(cropScale) ? cropScale : 1,
       cropOffsetX: Number.isFinite(cropOffsetX) ? cropOffsetX : 0,
       cropOffsetY: Number.isFinite(cropOffsetY) ? cropOffsetY : 0,
+      txSignature,
     });
 
     return okResponse(result, 201);

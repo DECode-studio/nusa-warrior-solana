@@ -1,7 +1,10 @@
 import { requireAdminSession } from "@/server/shared/auth/authorization";
 import { assertSameOriginMutation } from "@/server/shared/auth/request-security";
 import { enforceRateLimit } from "@/server/shared/http/distributed-rate-limit";
-import { RemoteFileStorageService } from "@/server/shared/storage/remote-file-storage.service";
+import {
+  isPinataConfigured,
+  pinFileBufferToIpfs,
+} from "@/server/modules/solana/pinata-ipfs.service";
 import { handleRouteError, okResponse } from "@/server/shared/http/api-response";
 import { AppError } from "@/server/shared/errors/app-error";
 
@@ -34,15 +37,19 @@ export async function POST(request: Request): Promise<Response> {
     const buffer = Buffer.from(arrayBuffer);
     const uniqueName = `team-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-    const remoteResult = await RemoteFileStorageService.uploadFile({
-      folder: "team",
-      name: uniqueName,
-      buffer,
-      mimeType,
-    });
-
-    if (remoteResult?.url) {
-      return okResponse({ url: remoteResult.url }, 201);
+    if (isPinataConfigured()) {
+      try {
+        const pinned = await pinFileBufferToIpfs({
+          buffer,
+          fileName: `${uniqueName}.${mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg"}`,
+          mimeType,
+        });
+        if (pinned?.url) {
+          return okResponse({ url: pinned.url }, 201);
+        }
+      } catch {
+        // Fallback to base64 data URL if Pinata upload fails
+      }
     }
 
     // Fallback if remote storage server is not configured in local environment

@@ -6,9 +6,12 @@ import type { Kingdom, CharacterGender, CharacterRole, CustomCardStatus } from "
 import {
   CUSTOM_CARD_POLICY,
   getCustomCardCost,
-  getNusaPointBalancePrisma,
-  deductNusaPointsForCustomCardPrisma,
 } from "@/server/modules/nusa-points/domain/nusa-point-policy";
+import {
+  buildBurnNusaTransaction,
+  getWalletTokenBalances,
+  verifyNusaBurnTransaction,
+} from "@/server/modules/solana/nusa-token.service";
 import { CustomCardCompositorService } from "./custom-card-compositor.service";
 
 export interface CreateCustomCardInput {
@@ -24,6 +27,7 @@ export interface CreateCustomCardInput {
   cropScale?: number;
   cropOffsetX?: number;
   cropOffsetY?: number;
+  txSignature?: string;
 }
 
 export interface CustomCardPricingDto {
@@ -44,18 +48,55 @@ function slugify(text: string): string {
 }
 
 export async function getCustomCardPricingUseCase(userId: string): Promise<CustomCardPricingDto> {
-  const [balance, createdCount] = await Promise.all([
-    getNusaPointBalancePrisma(userId),
+  const [user, createdCount] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { walletAddress: true } }),
     prisma.card.count({ where: { creatorId: userId, isCustom: true } }),
   ]);
+
+  const tokenBalances = user?.walletAddress
+    ? await getWalletTokenBalances(user.walletAddress).catch(() => null)
+    : null;
+  const balance = tokenBalances ? tokenBalances.nusa : 0;
 
   const nextCost = getCustomCardCost(createdCount);
   return {
     balance,
     createdCount,
     nextCost,
-    canAfford: balance >= nextCost,
+    canAfford: nextCost === 0 || balance >= nextCost,
     battlePointCap: CUSTOM_CARD_POLICY.defaultBattlePointCap,
+  };
+}
+
+export async function prepareCustomCardBurnUseCase(userId: string) {
+  const [user, createdCount] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { walletAddress: true } }),
+    prisma.card.count({ where: { creatorId: userId, isCustom: true } }),
+  ]);
+  const nextCost = getCustomCardCost(createdCount);
+  if (nextCost <= 0) {
+    return { nextCost: 0, requiresBurn: false, serializedTransaction: null };
+  }
+  if (!user?.walletAddress) {
+    throw AppError.badRequest(
+      "Hubungkan dompet Solana terlebih dahulu untuk membayar biaya minting dengan NUSA."
+    );
+  }
+  const balances = await getWalletTokenBalances(user.walletAddress);
+  if (balances.nusa < nextCost) {
+    throw AppError.badRequest(
+      `Saldo NUSA tidak mencukupi (${balances.nusa.toLocaleString("id-ID")} NUSA). Butuh ${nextCost.toLocaleString("id-ID")} NUSA.`
+    );
+  }
+  const burnTx = await buildBurnNusaTransaction({
+    ownerWallet: user.walletAddress,
+    uiAmount: nextCost,
+  });
+  return {
+    nextCost,
+    requiresBurn: true,
+    walletAddress: user.walletAddress,
+    ...burnTx,
   };
 }
 
@@ -105,10 +146,31 @@ export async function createCustomCardUseCase(
   }
 
   const pricing = await getCustomCardPricingUseCase(userId);
-  if (!pricing.canAfford) {
-    throw AppError.badRequest(
-      `Saldo NusaPoint Anda tidak mencukupi (${pricing.balance} NP). Butuh ${pricing.nextCost} NP untuk membuat kartu.`,
-    );
+  if (pricing.nextCost > 0) {
+    if (!input.txSignature) {
+      throw AppError.badRequest(
+        `Diperlukan transaksi burn ${pricing.nextCost.toLocaleString("id-ID")} NUSA terlebih dahulu.`
+      );
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { walletAddress: true },
+    });
+    if (!user?.walletAddress) {
+      throw AppError.badRequest("Dompet Solana belum terhubung.");
+    }
+    const dup = await prisma.nusaPointTransaction.findFirst({
+      where: { txSignature: input.txSignature },
+      select: { id: true },
+    });
+    if (dup) {
+      throw AppError.badRequest("Signature transaksi burn NUSA sudah pernah digunakan.");
+    }
+    await verifyNusaBurnTransaction({
+      txSignature: input.txSignature,
+      expectedOwnerWallet: user.walletAddress,
+      minUiAmount: pricing.nextCost,
+    });
   }
 
   const randomSuffix = randomBytes(3).toString("hex");
@@ -135,12 +197,17 @@ export async function createCustomCardUseCase(
 
   // 2. Simpan ke database secara atomic
   const createdCard = await prisma.$transaction(async (tx) => {
-    // Potong NusaPoint jika biaya > 0
-    if (pricing.nextCost > 0) {
-      await deductNusaPointsForCustomCardPrisma(tx, {
-        userId,
-        cardId,
-        cost: pricing.nextCost,
+    // Catat audit log burn NUSA jika biaya > 0
+    if (pricing.nextCost > 0 && input.txSignature) {
+      await tx.nusaPointTransaction.create({
+        data: {
+          id: randomUUID(),
+          userId,
+          amount: 0,
+          source: "CUSTOM_CARD_MINT",
+          sourceId: cardId,
+          txSignature: input.txSignature,
+        },
       });
     }
 

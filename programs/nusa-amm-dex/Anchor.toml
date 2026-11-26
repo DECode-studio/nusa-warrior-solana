@@ -1,0 +1,18 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+nusa_amm_dex = "7WdVgAhEJkaULUF2QnW3a6jqJyc6QeQeKnbN32rTDmJ5"
+
+[programs.devnet]
+nusa_amm_dex = "7WdVgAhEJkaULUF2QnW3a6jqJyc6QeQeKnbN32rTDmJ5"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"

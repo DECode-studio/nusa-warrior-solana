@@ -57,6 +57,28 @@ export class ShopRemoteDataSource {
     );
   }
 
+  public async prepareNusaBurnCheckout(starterPackCode: string): Promise<{
+    serializedTransaction: string;
+    amountNusa: number;
+  }> {
+    return apiClient.post<
+      { serializedTransaction: string; amountNusa: number },
+      { starterPackCode: string }
+    >(API_ROUTES.SHOP.CHECKOUT_PREPARE, { starterPackCode });
+  }
+
+  public async confirmNusaBurnCheckout(input: {
+    starterPackCode: string;
+    txSignature: string;
+    buyerName?: string;
+    buyerEmail?: string;
+  }): Promise<PaymentOrderApiModel> {
+    return apiClient.post<PaymentOrderApiModel, typeof input>(
+      API_ROUTES.SHOP.CHECKOUT,
+      input
+    );
+  }
+
   public async getOrder(orderId: string): Promise<PaymentOrderApiModel> {
     return apiClient.get<PaymentOrderApiModel>(API_ROUTES.SHOP.ORDER(orderId));
   }

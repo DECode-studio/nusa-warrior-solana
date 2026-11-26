@@ -15,6 +15,16 @@ export class CustomCardRemoteDataSource {
     );
   }
 
+  public async prepareBurn(): Promise<{
+    requiresBurn: boolean;
+    serializedTransaction: string | null;
+  }> {
+    return apiClient.post<
+      { requiresBurn: boolean; serializedTransaction: string | null },
+      Record<string, never>
+    >(API_ROUTES.CUSTOM_CARDS.prepare, {});
+  }
+
   public async createCustomCard(
     formData: FormData
   ): Promise<CreateCustomCardResponseApiModel> {

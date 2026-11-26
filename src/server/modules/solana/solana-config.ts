@@ -17,6 +17,11 @@ export const NUSA_CARD_VAULT_PROGRAM_ID = new PublicKey(
     "GWbea8uHeLSiMKwuL8UDeBhg3k83v6QnKwswiTCmJ6GU"
 );
 
+export const NUSA_AMM_DEX_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_NUSA_AMM_DEX_PROGRAM_ID?.trim() ||
+    "7WdVgAhEJkaULUF2QnW3a6jqJyc6QeQeKnbN32rTDmJ5"
+);
+
 export function getSolanaNetwork(): SolanaCluster {
   const raw = process.env.NEXT_PUBLIC_SOLANA_NETWORK?.trim().toLowerCase();
   if (raw === "mainnet-beta" || raw === "mainnet") return "mainnet-beta";

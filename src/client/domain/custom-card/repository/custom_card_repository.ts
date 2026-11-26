@@ -7,6 +7,10 @@ import type {
 
 export interface CustomCardRepository {
   getPricing(): Promise<CustomCardPricingEntity>;
+  prepareBurn(): Promise<{
+    requiresBurn: boolean;
+    serializedTransaction: string | null;
+  }>;
   createCustomCard(params: CreateCustomCardParams): Promise<CreateCustomCardResultEntity>;
   listUserCustomCards(): Promise<CardEntity[]>;
 }

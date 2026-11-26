@@ -19,6 +19,7 @@ export const CARD_API_ROUTES = {
 
 export const CUSTOM_CARD_API_ROUTES = {
   pricing: `${API_BASE_PATHS.v1}/user/custom-cards/pricing`,
+  prepare: `${API_BASE_PATHS.v1}/user/custom-cards/prepare`,
   cards: `${API_BASE_PATHS.v1}/user/custom-cards`,
   adminPending: `${API_BASE_PATHS.v1}/admin/custom-cards`,
   adminReview: (id: string) => `${API_BASE_PATHS.v1}/admin/custom-cards/${id}`,
@@ -69,8 +70,20 @@ export const STORY_MODE_API_ROUTES = {
   adminAssets: `${API_BASE_PATHS.v1}/admin/story-mode/assets`,
 } as const;
 
+export const SOLANA_API_ROUTES = {
+  faucetSol: `${API_BASE_PATHS.v1}/solana/faucet`,
+  tokenBalances: `${API_BASE_PATHS.v1}/solana/tokens/balances`,
+  tokenFaucet: `${API_BASE_PATHS.v1}/solana/tokens/faucet`,
+  claimPrepare: `${API_BASE_PATHS.v1}/solana/tokens/claim/prepare`,
+  claimConfirm: `${API_BASE_PATHS.v1}/solana/tokens/claim/confirm`,
+  dexPools: `${API_BASE_PATHS.v1}/solana/dex/pools`,
+  dexQuote: `${API_BASE_PATHS.v1}/solana/dex/quote`,
+  dexSwap: `${API_BASE_PATHS.v1}/solana/dex/swap`,
+} as const;
+
 export const SHOP_API_ROUTES = {
   decks: `${API_BASE_PATHS.v1}/shop/decks`,
+  checkoutPrepare: `${API_BASE_PATHS.v1}/shop/checkout/prepare`,
   checkout: `${API_BASE_PATHS.v1}/shop/checkout`,
   paymentMethods: `${API_BASE_PATHS.v1}/shop/payment-methods`,
   transactions: `${API_BASE_PATHS.v1}/shop/transactions`,
@@ -126,6 +139,7 @@ export const API_ROUTES = {
   TEAM: TEAM_API_ROUTES,
   SHOP: {
     DECKS: SHOP_API_ROUTES.decks,
+    CHECKOUT_PREPARE: SHOP_API_ROUTES.checkoutPrepare,
     CHECKOUT: SHOP_API_ROUTES.checkout,
     PAYMENT_METHODS: SHOP_API_ROUTES.paymentMethods,
     TRANSACTIONS: SHOP_API_ROUTES.transactions,
@@ -136,6 +150,7 @@ export const API_ROUTES = {
     TOPUP_CHECKOUT: SHOP_API_ROUTES.topupCheckout,
     TOPUP_ORDER: SHOP_API_ROUTES.topupOrder,
   },
+  SOLANA: SOLANA_API_ROUTES,
   ADMIN: {
     CARDS: ADMIN_API_ROUTES.cards,
     REPORTS: ADMIN_API_ROUTES.reports,

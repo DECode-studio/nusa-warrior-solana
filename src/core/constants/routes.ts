@@ -16,6 +16,7 @@ export const ROUTES = {
     `/${lang}/catalog/${slug}`,
   TEAM: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/team`,
   CONTACT: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/contact`,
+  FAUCET: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/faucet`,
   LOGIN: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/login`,
 
   // 2. User Category Routes (Console Panel Style)

@@ -20,6 +20,13 @@ export class CustomCardUseCase {
     return this.repository.getPricing();
   }
 
+  async prepareBurn(): Promise<{
+    requiresBurn: boolean;
+    serializedTransaction: string | null;
+  }> {
+    return this.repository.prepareBurn();
+  }
+
   async createCustomCard(params: CreateCustomCardParams): Promise<CreateCustomCardResultEntity> {
     return this.repository.createCustomCard(params);
   }

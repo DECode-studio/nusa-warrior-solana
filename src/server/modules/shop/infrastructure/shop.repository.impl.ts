@@ -798,6 +798,108 @@ export class ShopRepositoryImpl implements ShopRepository {
     persistEmbeddedStore(store);
     return "updated";
   }
+
+  public async createNusaBurnOrder(input: {
+    userId: string;
+    buyerName: string;
+    buyerEmail: string;
+    starterPackCode: string;
+    amountNusa: number;
+    txSignature: string;
+  }): Promise<StoredPaymentOrderRecord> {
+    const packs = await this.listStarterPacks(input.userId);
+    const pack = packs.find((p) => p.code === input.starterPackCode);
+    if (!pack) {
+      throw AppError.notFound(
+        `Paket '${input.starterPackCode}' tidak ditemukan.`
+      );
+    }
+
+    const isBooster =
+      pack.packType === "BOOSTER" || pack.code.includes("BOOSTER");
+    const drawnSlugs = isBooster
+      ? rollBoosterPackCards(pack.code)
+      : [...pack.cardSlugs];
+
+    const now = new Date();
+    const orderNumber = `NUSA-${now.getFullYear()}${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}${String(now.getDate()).padStart(
+      2,
+      "0"
+    )}-${randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase()}`;
+
+    if (isPrismaDriverEnabled()) {
+      return prisma.$transaction(async (tx) => {
+        const duplicate = await tx.shopOrder.findFirst({
+          where: { txSignature: input.txSignature },
+          select: { id: true },
+        });
+        if (duplicate) {
+          throw AppError.badRequest(
+            "Signature transaksi burn NUSA sudah pernah digunakan."
+          );
+        }
+        const dbPack = await tx.starterPack.findUnique({
+          where: { code: pack.code },
+          select: { id: true },
+        });
+        const created = await tx.shopOrder.create({
+          data: {
+            referenceCode: orderNumber,
+            userId: input.userId,
+            starterPackId: dbPack?.id ?? pack.id,
+            buyerName: input.buyerName,
+            buyerEmail: input.buyerEmail,
+            paymentMethod: "NUSA_BURN",
+            amountIdr: input.amountNusa,
+            originalAmountIdr: pack.priceIdr,
+            pointsSpent: input.amountNusa,
+            paymentStatus: "PAID",
+            paymentProvider: "NUSA_TOKEN_BURN",
+            paymentMode: "PROD",
+            drawnCardSlugs: drawnSlugs,
+            txSignature: input.txSignature,
+            paidAt: now,
+          },
+          include: { starterPack: true },
+        });
+        await grantOwnedCards(input.userId, drawnSlugs, `ORDER:${created.id}`, tx);
+        return mapPrismaOrder(created as Parameters<typeof mapPrismaOrder>[0]);
+      });
+    }
+
+    const store = getEmbeddedStore();
+    const id = `ord-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const record: StoredPaymentOrderRecord = {
+      id,
+      orderNumber,
+      userId: input.userId,
+      buyerName: input.buyerName,
+      buyerEmail: input.buyerEmail,
+      starterPackId: pack.id,
+      starterPackCode: pack.code,
+      starterPackName: pack.nameId,
+      paymentMethod: "NUSA_BURN",
+      amountIdr: input.amountNusa,
+      originalAmountIdr: pack.priceIdr,
+      pointsSpent: input.amountNusa,
+      paymentStatus: "PAID",
+      paymentProvider: "NUSA_TOKEN_BURN",
+      paymentMode: "PROD",
+      gatewayReference: input.txSignature,
+      paymentUrl: null,
+      paymentInstructions: null,
+      expiresAt: null,
+      drawnCardSlugs: drawnSlugs,
+      createdAt: now.toISOString(),
+      paidAt: now.toISOString(),
+    };
+    store.paymentOrders.unshift(record);
+    await grantOwnedCards(input.userId, drawnSlugs, `ORDER:${id}`);
+    persistEmbeddedStore(store);
+    return record;
+  }
 }
 
 export const shopRepository: ShopRepository = new ShopRepositoryImpl();

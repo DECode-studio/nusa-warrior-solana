@@ -18,6 +18,13 @@ import {
 } from "@/server/modules/payment/infrastructure/menu-kita-payment-gateway";
 import type { PaymentMode } from "@/server/modules/payment/domain/payment.repository";
 import { AppError } from "@/server/shared/errors/app-error";
+import { isPrismaDriverEnabled, prisma } from "@/server/shared/db/prisma";
+import {
+  buildBurnNusaTransaction,
+  getWalletTokenBalances,
+  verifyNusaBurnTransaction,
+} from "@/server/modules/solana/nusa-token.service";
+import { getUnclaimedNusaBalance } from "@/server/modules/nusa-points/infrastructure/nusa-point.repository.impl";
 
 export interface DrawnCardSummaryDto {
   slug: string;
@@ -40,6 +47,7 @@ export interface ShopCatalogDto {
   recentOrders: PaymentOrderWithCardsDto[];
   hasClaimedStarterPack: boolean;
   nusaPointBalance: number;
+  unclaimedNusa: number;
 }
 
 function enrichOrderWithCards(
@@ -71,19 +79,38 @@ function enrichOrderWithCards(
   };
 }
 
+async function resolveUserWalletAddress(userId: string): Promise<string | null> {
+  if (!isPrismaDriverEnabled()) return null;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { walletAddress: true },
+  });
+  return user?.walletAddress ?? null;
+}
+
 export async function getShopCatalogUseCase(
   userId?: string
 ): Promise<ShopCatalogDto> {
   const hasClaimed = userId
     ? await shopRepository.hasUserClaimedStarter(userId)
     : false;
-  const [packs, rawOrders, nusaPointBalance] = await Promise.all([
+  const walletAddress = userId ? await resolveUserWalletAddress(userId) : null;
+  const [packs, rawOrders, tokenBalances, unclaimedNusa] = await Promise.all([
     shopRepository.listStarterPacks(userId),
     shopRepository.listOrders(userId),
-    userId ? shopRepository.getPointBalance(userId) : Promise.resolve(0),
+    walletAddress
+      ? getWalletTokenBalances(walletAddress).catch(() => null)
+      : Promise.resolve(null),
+    userId ? getUnclaimedNusaBalance(userId) : Promise.resolve(0),
   ]);
   const recentOrders = rawOrders.map(enrichOrderWithCards);
-  return { packs, recentOrders, hasClaimedStarterPack: hasClaimed, nusaPointBalance };
+  return {
+    packs,
+    recentOrders,
+    hasClaimedStarterPack: hasClaimed,
+    nusaPointBalance: tokenBalances ? tokenBalances.nusa : 0,
+    unclaimedNusa,
+  };
 }
 
 export async function getShopTransactionHistoryUseCase(
@@ -118,6 +145,92 @@ export async function getShopPaymentChannelsUseCase(userId: string) {
   const mode = await resolvePaymentModeForUserUseCase(userId);
   const channels = await getGatewayPaymentChannels(mode);
   return { mode, channels };
+}
+
+export async function prepareShopNusaCheckoutUseCase(input: {
+  userId: string;
+  starterPackCode: string;
+}) {
+  if (!input.userId) throw AppError.unauthorized();
+  const packs = await shopRepository.listStarterPacks(input.userId);
+  const pack = packs.find((item) => item.code === input.starterPackCode);
+  if (!pack) {
+    throw AppError.notFound(`Paket '${input.starterPackCode}' tidak ditemukan.`);
+  }
+  if (pack.priceIdr < 1) {
+    throw AppError.badRequest(
+      "Klaim Starter Pack gratis melalui tombol klaim awal."
+    );
+  }
+
+  const walletAddress = await resolveUserWalletAddress(input.userId);
+  if (!walletAddress) {
+    throw AppError.badRequest(
+      "Hubungkan dompet Solana terlebih dahulu untuk membeli paket menggunakan Nusa Token (NUSA)."
+    );
+  }
+
+  const balances = await getWalletTokenBalances(walletAddress);
+  if (balances.nusa < pack.priceIdr) {
+    throw AppError.badRequest(
+      `Saldo Nusa Token tidak mencukupi (${balances.nusa.toLocaleString("id-ID")} NUSA). Butuh ${pack.priceIdr.toLocaleString("id-ID")} NUSA.`
+    );
+  }
+
+  const burnTx = await buildBurnNusaTransaction({
+    ownerWallet: walletAddress,
+    uiAmount: pack.priceIdr,
+  });
+
+  return {
+    starterPackCode: pack.code,
+    starterPackName: pack.nameId,
+    amountNusa: pack.priceIdr,
+    walletAddress,
+    ...burnTx,
+  };
+}
+
+export async function confirmShopNusaCheckoutUseCase(input: {
+  userId: string;
+  starterPackCode: string;
+  txSignature: string;
+  buyerName?: string;
+  buyerEmail?: string;
+}): Promise<PaymentOrderWithCardsDto> {
+  if (!input.userId) throw AppError.unauthorized();
+  const packs = await shopRepository.listStarterPacks(input.userId);
+  const pack = packs.find((item) => item.code === input.starterPackCode);
+  if (!pack) {
+    throw AppError.notFound(`Paket '${input.starterPackCode}' tidak ditemukan.`);
+  }
+  if (pack.priceIdr < 1) {
+    throw AppError.badRequest(
+      "Klaim Starter Pack gratis melalui tombol klaim awal."
+    );
+  }
+
+  const walletAddress = await resolveUserWalletAddress(input.userId);
+  if (!walletAddress) {
+    throw AppError.badRequest("Dompet Solana belum terhubung.");
+  }
+
+  await verifyNusaBurnTransaction({
+    txSignature: input.txSignature,
+    expectedOwnerWallet: walletAddress,
+    minUiAmount: pack.priceIdr,
+  });
+
+  const order = await shopRepository.createNusaBurnOrder({
+    userId: input.userId,
+    buyerName: input.buyerName?.trim() || "Solana Warrior",
+    buyerEmail: input.buyerEmail?.trim() || "warrior@nusawarrior.id",
+    starterPackCode: pack.code,
+    amountNusa: pack.priceIdr,
+    txSignature: input.txSignature,
+  });
+
+  return enrichOrderWithCards(order);
 }
 
 export async function checkoutPaymentOrderUseCase(

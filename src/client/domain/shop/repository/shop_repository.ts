@@ -21,6 +21,16 @@ export interface ShopRepository {
   }>;
   claimFreeStarterPack(txSignatures?: string[]): Promise<PaymentOrderEntity>;
   checkout(request: CheckoutPaymentRequest): Promise<PaymentOrderEntity>;
+  prepareNusaBurnCheckout(starterPackCode: string): Promise<{
+    serializedTransaction: string;
+    amountNusa: number;
+  }>;
+  confirmNusaBurnCheckout(input: {
+    starterPackCode: string;
+    txSignature: string;
+    buyerName?: string;
+    buyerEmail?: string;
+  }): Promise<PaymentOrderEntity>;
   getTopupTiers(): Promise<TopupTiersResponseEntity>;
   checkoutTopup(request: TopupCheckoutRequest): Promise<PaymentOrderEntity>;
 }

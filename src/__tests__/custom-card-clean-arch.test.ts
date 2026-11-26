@@ -33,6 +33,7 @@ describe("Custom Card Clean Architecture & DI Verification", () => {
         canAfford: true,
         battlePointCap: 2100,
       }),
+      prepareBurn: vi.fn(),
       createCustomCard: vi.fn(),
       listUserCustomCards: vi.fn(),
     };

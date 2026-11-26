@@ -29,6 +29,14 @@ export interface ShopRepository {
   createPaymentOrder(
     input: CreatePaymentOrderInput
   ): Promise<StoredPaymentOrderRecord>;
+  createNusaBurnOrder(input: {
+    userId: string;
+    buyerName: string;
+    buyerEmail: string;
+    starterPackCode: string;
+    amountNusa: number;
+    txSignature: string;
+  }): Promise<StoredPaymentOrderRecord>;
   attachGatewayPayment(input: {
     orderId: string;
     gatewayReference: string | null;

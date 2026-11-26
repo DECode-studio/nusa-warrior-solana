@@ -19,6 +19,8 @@ import { CustomCardRemoteDataSource } from "@/client/data/custom-card/datasource
 import { CustomCardRepositoryImpl } from "@/client/data/custom-card/repository/custom_card_repository_impl";
 import { TeamRemoteDataSource } from "@/client/data/team/datasource/team_remote_datasource";
 import { TeamRepositoryImpl } from "@/client/data/team/repository/team_repository_impl";
+import { SolanaTokenRemoteDataSource } from "@/client/data/solana-token/datasource/solana_token_remote_datasource";
+import { SolanaTokenRepositoryImpl } from "@/client/data/solana-token/repository/solana_token_repository_impl";
 import { AuthUseCase } from "@/client/domain/auth/usecase/auth_usecase";
 import { BattleUseCase } from "@/client/domain/battle/usecase/battle_usecase";
 import { LeagueUseCase } from "@/client/domain/league/usecase/league_usecase";
@@ -29,6 +31,7 @@ import { ShopUseCase } from "@/client/domain/shop/usecase/shop_usecase";
 import { StoryModeUseCase } from "@/client/domain/story-mode/usecase/story_mode_usecase";
 import { CustomCardUseCase } from "@/client/domain/custom-card/usecase/custom_card_usecase";
 import { TeamUseCase } from "@/client/domain/team/usecase/team_usecase";
+import { SolanaTokenUseCase } from "@/client/domain/solana-token/usecase/solana_token_usecase";
 import {
   AUTH_REPOSITORY_TOKEN,
   AUTH_USECASE_TOKEN,
@@ -50,6 +53,8 @@ import {
   CUSTOM_CARD_USECASE_TOKEN,
   TEAM_REPOSITORY_TOKEN,
   TEAM_USECASE_TOKEN,
+  SOLANA_TOKEN_REPOSITORY_TOKEN,
+  SOLANA_TOKEN_USECASE_TOKEN,
 } from "./tokens";
 
 const container = new Container();
@@ -64,6 +69,7 @@ container.bind(PaymentGatewayRemoteDataSource);
 container.bind(StoryModeRemoteDataSource);
 container.bind(CustomCardRemoteDataSource);
 container.bind(TeamRemoteDataSource);
+container.bind(SolanaTokenRemoteDataSource);
 
 container.bind({
   provide: CARD_REPOSITORY_TOKEN,
@@ -105,6 +111,10 @@ container.bind({
   provide: TEAM_REPOSITORY_TOKEN,
   useClass: TeamRepositoryImpl,
 });
+container.bind({
+  provide: SOLANA_TOKEN_REPOSITORY_TOKEN,
+  useClass: SolanaTokenRepositoryImpl,
+});
 
 container.bind({
   provide: CARD_USECASE_TOKEN,
@@ -145,6 +155,10 @@ container.bind({
 container.bind({
   provide: TEAM_USECASE_TOKEN,
   useClass: TeamUseCase,
+});
+container.bind({
+  provide: SOLANA_TOKEN_USECASE_TOKEN,
+  useClass: SolanaTokenUseCase,
 });
 
 export function getService<T>(token: Token<T>): T {

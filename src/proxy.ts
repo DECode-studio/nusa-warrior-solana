@@ -23,7 +23,7 @@ export function proxy(request: NextRequest): NextResponse {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "img-src 'self' blob: data: https://excitech-id.my.id https://storage.excitech.id https://api.menu-kita.com",
+    "img-src 'self' blob: data: https://gateway.pinata.cloud https://*.mypinata.cloud https://api.menu-kita.com",
     `connect-src 'self' https://api.devnet.solana.com wss://api.devnet.solana.com https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com${customSolanaOrigins}`,
     "object-src 'none'",
     "base-uri 'self'",

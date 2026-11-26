@@ -7,6 +7,7 @@ import {
 } from "@/server/shared/db/embedded-store";
 import { isPrismaDriverEnabled } from "@/server/shared/db/prisma";
 import {
+  claimUnclaimedNusaPrisma,
   getJakartaDayStart,
   getNusaPointBalancePrisma,
   grantNusaPointsPrisma,
@@ -97,4 +98,46 @@ export async function grantNusaPoints(input: {
   store.nusaPointTransactions.push(row);
   persistEmbeddedStore(store);
   return amount;
+}
+
+export async function getUnclaimedNusaBalance(userId: string): Promise<number> {
+  return getNusaPointBalance(userId);
+}
+
+export async function recordNusaClaim(input: {
+  userId: string;
+  claimId: string;
+  amount: number;
+  txSignature: string;
+  now?: Date;
+}): Promise<{ claimedAmount: number; remainingUnclaimed: number }> {
+  const now = input.now ?? new Date();
+  if (isPrismaDriverEnabled()) {
+    const { prisma } = await import("@/server/shared/db/prisma");
+    return prisma.$transaction((tx) =>
+      claimUnclaimedNusaPrisma(tx, { ...input, now })
+    );
+  }
+
+  const store = getEmbeddedStore();
+  const current = store.nusaPointTransactions
+    .filter((entry) => entry.userId === input.userId)
+    .reduce((sum, entry) => sum + entry.amount, 0);
+  if (current < input.amount || input.amount <= 0) {
+    throw new Error(`Saldo Unclaimed NUSA tidak mencukupi (${current} NUSA).`);
+  }
+  store.nusaPointTransactions.push({
+    id: randomUUID(),
+    userId: input.userId,
+    amount: -input.amount,
+    source: "NUSA_CLAIM",
+    sourceId: input.claimId,
+    opponentUserId: null,
+    createdAt: now.toISOString(),
+  });
+  persistEmbeddedStore(store);
+  return {
+    claimedAmount: input.amount,
+    remainingUnclaimed: current - input.amount,
+  };
 }
