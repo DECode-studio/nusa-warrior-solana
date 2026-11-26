@@ -5,6 +5,7 @@ import { useTranslator } from "@/core/translator";
 import { CardDetailModal } from "@/client/presentation/components/CardDetailModal";
 import { Button, IntellioCard, Pagination } from "@/client/presentation/components/ui";
 import { UserFeedback, UserPageHeading } from "@/client/presentation/components/user";
+import { DevnetFaucetButton } from "@/client/presentation/components/solana/DevnetFaucetButton";
 import {
   DeckBuilderCardGrid,
   DeckBuilderEditorPanel,
@@ -61,11 +62,12 @@ export function UserDeckBuilderView(): React.ReactElement {
 
   return (
     <div id={DECK_BUILDER_SEMANTIC_IDS.ROOT} className="space-y-6">
-      <div id={DECK_BUILDER_SEMANTIC_IDS.HEADING}>
+      <div id={DECK_BUILDER_SEMANTIC_IDS.HEADING} className="flex flex-wrap items-start justify-between gap-4">
         <UserPageHeading
           title={t(DECK_BUILDER_TEXT_CONSTANT.TITLE_KEY)}
           description={t(DECK_BUILDER_TEXT_CONSTANT.SUBTITLE_KEY)}
         />
+        <DevnetFaucetButton />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
