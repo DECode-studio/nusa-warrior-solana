@@ -47,6 +47,8 @@ export const BATTLE_API_ROUTES = {
   reconnect: (id: string) => `${API_BASE_PATHS.v1}/battles/${id}/reconnect`,
   quickMatch: `${API_BASE_PATHS.v1}/battles/quick-match`,
   quickMatchSearch: `${API_BASE_PATHS.v1}/battles/quick-match/search`,
+  vaultPrepare: (id: string) => `${API_BASE_PATHS.v1}/battles/${id}/vault/prepare`,
+  vaultConfirm: (id: string) => `${API_BASE_PATHS.v1}/battles/${id}/vault/confirm`,
 } as const;
 
 export const LEAGUE_API_ROUTES = {

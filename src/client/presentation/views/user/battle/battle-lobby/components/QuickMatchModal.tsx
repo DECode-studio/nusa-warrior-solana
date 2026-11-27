@@ -13,6 +13,8 @@ export interface QuickMatchModalProps {
   readonly error: string | null;
   readonly activeBattle: BattleSessionEntity | null;
   readonly endingActiveBattle: boolean;
+  readonly joiningQuickMatch: boolean;
+  readonly cancellingQuickMatch: boolean;
   readonly onAgree: () => void;
   readonly onDecline: () => void;
   readonly onCancelSearch: () => void;
@@ -28,6 +30,8 @@ export function QuickMatchModal({
   error,
   activeBattle,
   endingActiveBattle,
+  joiningQuickMatch,
+  cancellingQuickMatch,
   onAgree,
   onDecline,
   onCancelSearch,
@@ -39,6 +43,7 @@ export function QuickMatchModal({
   const { t } = useTranslator();
   const [offerSnoozedUntil, setOfferSnoozedUntil] = useState<number | null>(null);
   const searching = Boolean(queue && queue.status === "WAITING");
+  const busy = joiningQuickMatch || cancellingQuickMatch;
   const waitMs = queue?.waitMs ?? 0;
   const botOffer = searching && waitMs >= 30_000 &&
     (offerSnoozedUntil === null || waitMs >= offerSnoozedUntil);
@@ -54,7 +59,7 @@ export function QuickMatchModal({
     <BaseModal
       id="battle-quick-match-modal"
       isOpen={agreementOpen || searching}
-      onClose={agreementOpen ? onDecline : onCancelSearch}
+      onClose={agreementOpen ? (joiningQuickMatch ? () => {} : onDecline) : (cancellingQuickMatch ? () => {} : onCancelSearch)}
       title={agreementOpen && activeBattle
         ? t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_ACTIVE_TITLE)
         : agreementOpen
@@ -65,9 +70,9 @@ export function QuickMatchModal({
           ? t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_NO_OPPONENT)
           : t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_SEARCHING)}
       size={botOffer || leagueOffer ? "md" : "sm"}
-      closeOnBackdropClick={!searching}
-      showCloseButton={!searching}
-      dragToDismiss={!searching}
+      closeOnBackdropClick={!searching && !busy}
+      showCloseButton={!searching && !busy}
+      dragToDismiss={!searching && !busy}
       footer={agreementOpen && activeBattle ? (
         <div className="flex w-full flex-col-reverse gap-2.5 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           <Button variant="secondary" size="sm" className="w-full sm:w-auto" disabled={endingActiveBattle} onClick={confirmingActiveBattleEnd ? () => setConfirmingActiveBattleEnd(false) : onContinueActiveBattle}>
@@ -83,6 +88,7 @@ export function QuickMatchModal({
             variant="secondary"
             size="sm"
             className="w-full sm:w-auto"
+            disabled={joiningQuickMatch}
             onClick={onDecline}
           >
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_CANCEL)}
@@ -91,6 +97,7 @@ export function QuickMatchModal({
             variant="primary"
             size="sm"
             className="w-full sm:w-auto"
+            isLoading={joiningQuickMatch}
             onClick={onAgree}
           >
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_AGREE)}
@@ -98,13 +105,13 @@ export function QuickMatchModal({
         </div>
       ) : leagueOffer ? (
         <div className="flex w-full flex-col-reverse gap-2.5 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-          <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={onCancelSearch}>
+          <Button variant="secondary" size="sm" className="w-full sm:w-auto" isLoading={cancellingQuickMatch} onClick={onCancelSearch}>
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_CANCEL_SEARCH)}
           </Button>
-          <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={() => setOfferSnoozedUntil(waitMs + 30_000)}>
+          <Button variant="secondary" size="sm" className="w-full sm:w-auto" disabled={cancellingQuickMatch} onClick={() => setOfferSnoozedUntil(waitMs + 30_000)}>
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_KEEP_SEARCHING)}
           </Button>
-          <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={onBrowseLeagues}>
+          <Button variant="primary" size="sm" className="w-full sm:w-auto" disabled={cancellingQuickMatch} onClick={onBrowseLeagues}>
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_OFFER_ACTION)}
           </Button>
         </div>
@@ -114,6 +121,7 @@ export function QuickMatchModal({
             variant="secondary"
             size="sm"
             className="w-full sm:w-auto"
+            isLoading={cancellingQuickMatch}
             onClick={onCancelSearch}
           >
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_CANCEL_SEARCH)}
@@ -122,6 +130,7 @@ export function QuickMatchModal({
             variant="secondary"
             size="sm"
             className="w-full sm:w-auto"
+            disabled={cancellingQuickMatch}
             onClick={() => setOfferSnoozedUntil(waitMs + 30_000)}
           >
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_KEEP_SEARCHING)}
@@ -130,6 +139,7 @@ export function QuickMatchModal({
             variant="primary"
             size="sm"
             className="w-full sm:w-auto"
+            disabled={cancellingQuickMatch}
             onClick={onPlayBot}
           >
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_PLAY_BOT)}
@@ -141,6 +151,7 @@ export function QuickMatchModal({
             variant="secondary"
             size="sm"
             className="w-full sm:w-auto"
+            isLoading={cancellingQuickMatch}
             onClick={onCancelSearch}
           >
             {t(BATTLE_TEXT_CONSTANT.QUICK_MATCH_CANCEL_SEARCH)}

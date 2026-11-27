@@ -2,7 +2,9 @@ import type {
   BattleStateEntity,
   BattleSessionEntity,
   BotDifficulty,
+  ConfirmVaultLockEntity,
   MatchLogEntity,
+  PrepareVaultLockEntity,
   QuickMatchQueueEntity,
 } from "@/client/domain/battle/entity/battle_entity";
 
@@ -19,6 +21,31 @@ export interface BattleSessionApiModel {
   storyKingdom?: "MAJAPAHIT" | "PAJAJARAN" | null;
   storyMissionId?: string | null;
   storyChoiceId?: string | null;
+  vaultPda?: string | null;
+  playerLockTxSignature?: string | null;
+  opponentLockTxSignature?: string | null;
+  viewerLockTxSignature?: string | null;
+  settleTxSignature?: string | null;
+  vaultLockRequired?: boolean;
+  viewerVaultLocked?: boolean;
+  opponentVaultLocked?: boolean;
+}
+
+export interface PrepareVaultLockApiModel {
+  matchId: string;
+  vaultPda: string;
+  cardCount: number;
+  alreadyLocked: boolean;
+  serializedTransactions: string[];
+}
+
+export interface ConfirmVaultLockApiModel {
+  matchId: string;
+  vaultPda: string;
+  txSignatures: string[];
+  primaryTxSignature: string;
+  explorerUrls: string[];
+  bothLocked: boolean;
 }
 
 export interface QuickMatchQueueApiModel {
@@ -59,6 +86,39 @@ export function mapBattleSessionModelToEntity(
     storyKingdom: model.storyKingdom,
     storyMissionId: model.storyMissionId,
     storyChoiceId: model.storyChoiceId,
+    vaultPda: model.vaultPda ?? null,
+    playerLockTxSignature: model.playerLockTxSignature ?? null,
+    opponentLockTxSignature: model.opponentLockTxSignature ?? null,
+    viewerLockTxSignature: model.viewerLockTxSignature ?? null,
+    settleTxSignature: model.settleTxSignature ?? null,
+    vaultLockRequired: model.vaultLockRequired,
+    viewerVaultLocked: model.viewerVaultLocked,
+    opponentVaultLocked: model.opponentVaultLocked,
+  };
+}
+
+export function mapPrepareVaultLockModelToEntity(
+  model: PrepareVaultLockApiModel
+): PrepareVaultLockEntity {
+  return {
+    matchId: model.matchId,
+    vaultPda: model.vaultPda,
+    cardCount: model.cardCount,
+    alreadyLocked: model.alreadyLocked,
+    serializedTransactions: model.serializedTransactions,
+  };
+}
+
+export function mapConfirmVaultLockModelToEntity(
+  model: ConfirmVaultLockApiModel
+): ConfirmVaultLockEntity {
+  return {
+    matchId: model.matchId,
+    vaultPda: model.vaultPda,
+    txSignatures: model.txSignatures,
+    primaryTxSignature: model.primaryTxSignature,
+    explorerUrls: model.explorerUrls,
+    bothLocked: model.bothLocked,
   };
 }
 

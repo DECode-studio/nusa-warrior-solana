@@ -14,4 +14,5 @@ export * from "./BattleInstrumentHand";
 export * from "./BattleCombatLogDrawer";
 export * from "./BattleSurrenderModal";
 export * from "./BattleMatchOverModal";
+export * from "./BattleVaultLockOverlay";
 export * from "./BattleCardActionBottomSheet";

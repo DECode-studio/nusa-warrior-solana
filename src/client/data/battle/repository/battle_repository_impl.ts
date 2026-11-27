@@ -3,14 +3,18 @@ import type {
   BattleActionSubmission,
   BattleSessionEntity,
   BotDifficulty,
+  ConfirmVaultLockEntity,
   MatchLogEntity,
+  PrepareVaultLockEntity,
   QuickMatchQueueEntity,
 } from "@/client/domain/battle/entity/battle_entity";
 import type { BattleRepository } from "@/client/domain/battle/repository/battle_repository";
 import { BattleRemoteDataSource } from "../datasource/battle_remote_datasource";
 import {
   mapBattleSessionModelToEntity,
+  mapConfirmVaultLockModelToEntity,
   mapMatchLogModelToEntity,
+  mapPrepareVaultLockModelToEntity,
   mapQuickMatchQueueModelToEntity,
 } from "../model/battle_model";
 
@@ -80,6 +84,21 @@ export class BattleRepositoryImpl implements BattleRepository {
 
   public async cancelQuickMatch(): Promise<boolean> {
     return this.remoteDataSource.cancelQuickMatch();
+  }
+
+  public async prepareVaultLock(id: string): Promise<PrepareVaultLockEntity> {
+    return mapPrepareVaultLockModelToEntity(
+      await this.remoteDataSource.prepareVaultLock(id)
+    );
+  }
+
+  public async confirmVaultLock(
+    id: string,
+    txSignatures: string[]
+  ): Promise<ConfirmVaultLockEntity> {
+    return mapConfirmVaultLockModelToEntity(
+      await this.remoteDataSource.confirmVaultLock(id, txSignatures)
+    );
   }
 
 }

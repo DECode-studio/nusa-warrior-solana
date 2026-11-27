@@ -36,6 +36,31 @@ export interface BattleSessionEntity {
   readonly storyKingdom?: "MAJAPAHIT" | "PAJAJARAN" | null;
   readonly storyMissionId?: string | null;
   readonly storyChoiceId?: string | null;
+  readonly vaultPda?: string | null;
+  readonly playerLockTxSignature?: string | null;
+  readonly opponentLockTxSignature?: string | null;
+  readonly viewerLockTxSignature?: string | null;
+  readonly settleTxSignature?: string | null;
+  readonly vaultLockRequired?: boolean;
+  readonly viewerVaultLocked?: boolean;
+  readonly opponentVaultLocked?: boolean;
+}
+
+export interface PrepareVaultLockEntity {
+  readonly matchId: string;
+  readonly vaultPda: string;
+  readonly cardCount: number;
+  readonly alreadyLocked: boolean;
+  readonly serializedTransactions: string[];
+}
+
+export interface ConfirmVaultLockEntity {
+  readonly matchId: string;
+  readonly vaultPda: string;
+  readonly txSignatures: string[];
+  readonly primaryTxSignature: string;
+  readonly explorerUrls: string[];
+  readonly bothLocked: boolean;
 }
 
 export interface QuickMatchQueueEntity {

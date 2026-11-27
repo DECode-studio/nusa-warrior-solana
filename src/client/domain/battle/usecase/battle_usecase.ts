@@ -4,7 +4,9 @@ import type {
   BattleActionSubmission,
   BattleSessionEntity,
   BotDifficulty,
+  ConfirmVaultLockEntity,
   MatchLogEntity,
+  PrepareVaultLockEntity,
   QuickMatchQueueEntity,
 } from "../entity/battle_entity";
 import type { BattleRepository } from "../repository/battle_repository";
@@ -64,6 +66,17 @@ export class BattleUseCase {
 
   public async cancelQuickMatch(): Promise<boolean> {
     return this.battleRepository.cancelQuickMatch();
+  }
+
+  public async prepareVaultLock(id: string): Promise<PrepareVaultLockEntity> {
+    return this.battleRepository.prepareVaultLock(id);
+  }
+
+  public async confirmVaultLock(
+    id: string,
+    txSignatures: string[]
+  ): Promise<ConfirmVaultLockEntity> {
+    return this.battleRepository.confirmVaultLock(id, txSignatures);
   }
 
 }

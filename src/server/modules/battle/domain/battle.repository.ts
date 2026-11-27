@@ -102,6 +102,12 @@ export interface BattleRepository {
     rngDrawsJson: string;
     completion?: CreateMatchLogInput;
   }): Promise<import("@/server/shared/db/embedded-store").StoredBattleSessionRecord | null>;
+  cancelPreLockBattleSession(input: {
+    id: string;
+    userId: string;
+    expectedSequence: number;
+    eventsJson: string;
+  }): Promise<import("@/server/shared/db/embedded-store").StoredBattleSessionRecord | null>;
   reconnectBattleSession(id: string, userId: string, now: Date, staleMs: number, graceMs: number): Promise<import("@/server/shared/db/embedded-store").StoredBattleSessionRecord | null>;
   // Parameter opsional sessionId membatasi sweep ke 1 sesi saat dipanggil dari request user.
   sweepBattleSessions(now: Date, staleBefore: Date, graceMs: number, sessionId?: string): Promise<number>;

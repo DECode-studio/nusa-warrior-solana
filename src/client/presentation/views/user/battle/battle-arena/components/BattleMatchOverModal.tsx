@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, RotateCcw, Trophy } from "lucide-react";
+import { ArrowLeft, Loader2, RotateCcw, Trophy } from "lucide-react";
 import type { CardEntity } from "@/client/domain/card/entity/card_entity";
 import { useTranslator } from "@/core/translator";
 import { BaseModal, Button } from "@/client/presentation/components/ui";
@@ -27,6 +27,7 @@ export interface BattleMatchOverModalProps {
   readonly vaultPda?: string | null;
   readonly lockTxSignature?: string | null;
   readonly settleTxSignature?: string | null;
+  readonly isSettlingVault?: boolean;
   readonly onNewMatch: () => void;
   readonly onExitToLobby: () => void;
 }
@@ -48,6 +49,7 @@ export function BattleMatchOverModal({
   vaultPda = null,
   lockTxSignature = null,
   settleTxSignature = null,
+  isSettlingVault = false,
   onNewMatch,
   onExitToLobby,
 }: BattleMatchOverModalProps): React.ReactElement | null {
@@ -128,6 +130,12 @@ export function BattleMatchOverModal({
           <p className="rounded-xl border border-amber/20 bg-amber/10 p-3 text-sm font-semibold text-amber-light">
             {t(BATTLE_TEXT_CONSTANT.LEAGUE_STAKE_NOT_TRANSFERRED)}
           </p>
+        )}
+        {(isQuickMatch || isLeagueMatch) && isSettlingVault && !settleTxSignature && (
+          <div className="flex items-center justify-center gap-2 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-amber-300" />
+            <span>{t(BATTLE_TEXT_CONSTANT.VAULT_SETTLING_STATUS)}</span>
+          </div>
         )}
         {(isQuickMatch || isLeagueMatch) && (vaultPda || lockTxSignature || settleTxSignature) && (
           <SolanaVaultTxBadge

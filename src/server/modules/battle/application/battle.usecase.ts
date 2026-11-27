@@ -8,8 +8,13 @@ import type {
 import { listDecksUseCase } from "@/server/modules/deck/application/deck.usecase";
 import { cardRepository } from "@/server/modules/card/infrastructure/card.repository.impl";
 import { AppError } from "@/server/shared/errors/app-error";
-import { isPrismaDriverEnabled } from "@/server/shared/db/prisma";
+import { isPrismaDriverEnabled, prisma } from "@/server/shared/db/prisma";
 import { logServerEvent } from "@/server/shared/logging/server-logger";
+import {
+  isOnChainVaultRequiredForSession,
+  reconcileUnsettledUserBattleVaults,
+  settleCompletedBattleVaultOnChain,
+} from "@/server/modules/solana/battle-vault-orchestrator.service";
 import type {
   StoredMatchLogRecord,
   StoredQuickMatchQueueRecord,
@@ -59,7 +64,11 @@ export interface BattleSessionView {
   vaultPda?: string | null;
   playerLockTxSignature?: string | null;
   opponentLockTxSignature?: string | null;
+  viewerLockTxSignature?: string | null;
   settleTxSignature?: string | null;
+  vaultLockRequired?: boolean;
+  viewerVaultLocked?: boolean;
+  opponentVaultLocked?: boolean;
   rngCommitment: string | null;
   rngAudit?: {
     algorithm: string;
@@ -229,11 +238,17 @@ function toSessionView(record: {
   playerLockTxSignature?: string | null;
   opponentLockTxSignature?: string | null;
   settleTxSignature?: string | null;
-}, viewerUserId?: string): BattleSessionView {
+}, viewerUserId?: string, options?: { vaultLockRequired?: boolean }): BattleSessionView {
   const canonicalState = JSON.parse(record.stateJson) as BattleStateEntity;
   const isSecondPlayer = Boolean(record.isQuickMatch && viewerUserId && record.opponentUserId === viewerUserId);
   const state = isSecondPlayer ? swapBattlePerspective(canonicalState) : canonicalState;
   if (isSecondPlayer && record.opponentDeckName) state.playerDeckName = record.opponentDeckName;
+  const viewerLockTxSignature = isSecondPlayer
+    ? (record.opponentLockTxSignature ?? null)
+    : (record.playerLockTxSignature ?? null);
+  const opponentLockTxSignatureForViewer = isSecondPlayer
+    ? (record.playerLockTxSignature ?? null)
+    : (record.opponentLockTxSignature ?? null);
   const events = JSON.parse(record.eventsJson) as Array<Record<string, unknown>>;
   const view: BattleSessionView = {
     id: record.id,
@@ -244,7 +259,11 @@ function toSessionView(record: {
     vaultPda: record.vaultPda ?? null,
     playerLockTxSignature: record.playerLockTxSignature ?? null,
     opponentLockTxSignature: record.opponentLockTxSignature ?? null,
+    viewerLockTxSignature,
     settleTxSignature: record.settleTxSignature ?? null,
+    vaultLockRequired: Boolean(options?.vaultLockRequired),
+    viewerVaultLocked: Boolean(viewerLockTxSignature),
+    opponentVaultLocked: Boolean(opponentLockTxSignatureForViewer),
     state: record.status === "ACTIVE" || record.isQuickMatch ? redactState(state) : state,
     rngCommitment: record.rngCommitment,
     isQuickMatch: Boolean(record.isQuickMatch),
@@ -268,6 +287,34 @@ function toSessionView(record: {
   return {
     ...view,
   };
+}
+
+async function resolveVaultLockRequired(record: {
+  isQuickMatch?: boolean;
+  userId?: string;
+  opponentUserId?: string | null;
+}): Promise<boolean> {
+  if (!isPrismaDriverEnabled() || !record.isQuickMatch || !record.userId || !record.opponentUserId) {
+    return false;
+  }
+  const users = await prisma.user.findMany({
+    where: { id: { in: [record.userId, record.opponentUserId] } },
+    select: { id: true, walletAddress: true },
+  });
+  const walletById = new Map(users.map((u) => [u.id, u.walletAddress]));
+  return isOnChainVaultRequiredForSession({
+    isQuickMatch: true,
+    playerAWallet: walletById.get(record.userId) ?? null,
+    playerBWallet: walletById.get(record.opponentUserId) ?? null,
+  });
+}
+
+async function toSessionViewWithVault(
+  record: Parameters<typeof toSessionView>[0],
+  viewerUserId?: string
+): Promise<BattleSessionView> {
+  const vaultLockRequired = await resolveVaultLockRequired(record);
+  return toSessionView(record, viewerUserId, { vaultLockRequired });
 }
 
 export async function listMatchesUseCase(userId: string): Promise<StoredMatchLogRecord[]> {
@@ -554,7 +601,7 @@ export async function joinQuickMatchQueueUseCase(input: {
   });
   if (!result) throw AppError.internal("Antrean quick match tidak dapat dibuat.");
   const session = result.session
-    ? toSessionView(result.session, input.userId)
+    ? await toSessionViewWithVault(result.session, input.userId)
     : result.queue.battleSessionId
       ? await getBattleSessionUseCase(result.queue.battleSessionId, input.userId).catch(() => null)
       : null;
@@ -568,10 +615,11 @@ export async function getQuickMatchQueueStatusUseCase(userId: string): Promise<Q
   if (process.env.NODE_ENV === "production" && !isPrismaDriverEnabled()) {
     throw AppError.internal("Quick match memerlukan storage Prisma di production.");
   }
+  await reconcileUnsettledUserBattleVaults(userId);
   const active = await battleRepository.getLatestActiveBattleSession(userId);
   if (active && !active.isQuickMatch) return null;
   if (active?.isQuickMatch) {
-    const session = toSessionView(active, userId);
+    const session = await toSessionViewWithVault(active, userId);
     if (isTerminalBattleSession(session)) return null;
     return {
       id: active.id,
@@ -598,7 +646,7 @@ export async function searchQuickMatchQueueUseCase(userId: string): Promise<Quic
   const active = await battleRepository.getLatestActiveBattleSession(userId);
   if (active && !active.isQuickMatch) throw AppError.conflict("Selesaikan pertandingan aktif sebelum mencari quick match.");
   if (active?.isQuickMatch) {
-    const session = toSessionView(active, userId);
+    const session = await toSessionViewWithVault(active, userId);
     if (isTerminalBattleSession(session)) return null;
     return {
       id: active.id,
@@ -631,9 +679,18 @@ export async function getBattleSessionUseCase(
   id: string,
   userId: string
 ): Promise<BattleSessionView> {
-  const record = await battleRepository.getBattleSession(id, userId);
+  let record = await battleRepository.getBattleSession(id, userId);
   if (!record) throw AppError.notFound("Match tidak ditemukan.");
-  return toSessionView(record, userId);
+  if (
+    record.isQuickMatch &&
+    record.status !== "ACTIVE" &&
+    record.vaultPda &&
+    !record.settleTxSignature
+  ) {
+    await settleCompletedBattleVaultOnChain({ matchId: record.id });
+    record = (await battleRepository.getBattleSession(id, userId)) ?? record;
+  }
+  return toSessionViewWithVault(record, userId);
 }
 
 const BATTLE_HEARTBEAT_STALE_MS = 45_000;
@@ -665,7 +722,16 @@ export async function reconnectBattleSessionUseCase(
       // Hanya sweep sesi ini agar tidak memindai & mengunci seluruh sesi ACTIVE di DB.
       await sweepBattleSessionsUseCase(new Date(now), id);
       current = await battleRepository.getBattleSession(id, userId) ?? current;
-      if (current.status === "COMPLETED") return toSessionView(current, userId);
+      if (current.status !== "ACTIVE") {
+        if (
+          current.vaultPda &&
+          !current.settleTxSignature
+        ) {
+          await settleCompletedBattleVaultOnChain({ matchId: current.id });
+          current = await battleRepository.getBattleSession(id, userId) ?? current;
+        }
+        if (current.status === "COMPLETED") return toSessionViewWithVault(current, userId);
+      }
     }
   }
   const record = await battleRepository.reconnectBattleSession(
@@ -677,15 +743,34 @@ export async function reconnectBattleSessionUseCase(
   );
   if (!record) {
     current = await battleRepository.getBattleSession(id, userId) ?? current;
-    if (current.status === "COMPLETED") return toSessionView(current, userId);
+    if (
+      current.isQuickMatch &&
+      current.vaultPda &&
+      !current.settleTxSignature
+    ) {
+      await settleCompletedBattleVaultOnChain({ matchId: current.id });
+      current = await battleRepository.getBattleSession(id, userId) ?? current;
+    }
+    if (current.status === "COMPLETED") return toSessionViewWithVault(current, userId);
     throw AppError.conflict("Masa reconnect pertandingan telah berakhir.");
   }
-  return toSessionView(record, userId);
+  if (
+    record.isQuickMatch &&
+    record.status !== "ACTIVE" &&
+    record.vaultPda &&
+    !record.settleTxSignature
+  ) {
+    await settleCompletedBattleVaultOnChain({ matchId: record.id });
+    const settled = await battleRepository.getBattleSession(id, userId);
+    return toSessionViewWithVault(settled ?? record, userId);
+  }
+  return toSessionViewWithVault(record, userId);
 }
 
 export async function reconnectLatestActiveBattleSessionUseCase(
   userId: string
 ): Promise<BattleSessionView | null> {
+  await reconcileUnsettledUserBattleVaults(userId);
   const record = await battleRepository.getLatestActiveBattleSession(userId);
   if (!record) return null;
   try {
@@ -894,6 +979,53 @@ export async function submitBattleActionUseCase(input: {
     });
     throw AppError.conflict("State match sudah berubah. Muat state terbaru sebelum mengirim aksi.");
   }
+  const vaultLockRequired = await resolveVaultLockRequired(record);
+  if (
+    vaultLockRequired &&
+    (!record.playerLockTxSignature || !record.opponentLockTxSignature)
+  ) {
+    if (input.action.type === "SURRENDER") {
+      const cancelEvents = [...persistedEvents];
+      const cancelEvent: Record<string, unknown> = {
+        sequence: record.sequence + 1,
+        idempotencyKey: input.idempotencyKey,
+        actorUserId: input.userId,
+        type: "PRE_LOCK_CANCELLED",
+        at: new Date().toISOString(),
+      };
+      const previousHash =
+        typeof cancelEvents.at(-1)?.hash === "string"
+          ? String(cancelEvents.at(-1)?.hash)
+          : null;
+      cancelEvents.push({
+        ...cancelEvent,
+        hash: hashAuditEvent(previousHash, cancelEvent),
+      });
+      const cancelled = await battleRepository.cancelPreLockBattleSession({
+        id: input.id,
+        userId: input.userId,
+        expectedSequence: input.expectedSequence,
+        eventsJson: JSON.stringify(cancelEvents),
+      });
+      if (!cancelled) {
+        throw AppError.conflict(
+          "Aksi bersamaan sudah memperbarui match. Muat state terbaru."
+        );
+      }
+      if (cancelled.vaultPda) {
+        await settleCompletedBattleVaultOnChain({ matchId: cancelled.id });
+      }
+      const latestCancelled =
+        (await battleRepository.getBattleSession(input.id, input.userId)) ??
+        cancelled;
+      return toSessionView(latestCancelled, input.userId, {
+        vaultLockRequired,
+      });
+    }
+    throw AppError.conflict(
+      "Kedua pemain harus mengunci kartu ke On-Chain Battle Vault terlebih dahulu."
+    );
+  }
   if (record.turnDeadlineAt && Date.parse(record.turnDeadlineAt) <= Date.now()) {
     // Batasi sweep timeout giliran ke match ini saja.
     await sweepBattleSessionsUseCase(new Date(), input.id);
@@ -1017,10 +1149,20 @@ export async function submitBattleActionUseCase(input: {
     if (latest) {
       const latestEvents = JSON.parse(latest.eventsJson) as Array<Record<string, unknown>>;
       if (latestEvents.some((item) => item.idempotencyKey === input.idempotencyKey)) {
-        return toSessionView(latest, input.userId);
+        return toSessionViewWithVault(latest, input.userId);
       }
     }
     throw AppError.conflict("Aksi bersamaan sudah memperbarui match. Muat state terbaru.");
+  }
+  if (
+    saved.status === "COMPLETED" &&
+    saved.isQuickMatch &&
+    saved.vaultPda &&
+    !saved.settleTxSignature
+  ) {
+    // Trigger on-chain settlement asynchronously so SURRENDER / winning actions respond immediately;
+    // reconnectSession / getBattleSession continue polling & retrying idempotently if needed.
+    void settleCompletedBattleVaultOnChain({ matchId: saved.id });
   }
   logServerEvent("info", state.winner ? "battle.session.completed" : "battle.action.applied", {
     requestId: input.requestId,
@@ -1032,7 +1174,7 @@ export async function submitBattleActionUseCase(input: {
     turnNumber: state.turnNumber,
     phase: state.phase,
   });
-  return toSessionView(saved, input.userId);
+  return toSessionView(saved, input.userId, { vaultLockRequired });
 }
 
 export async function surrenderPendingNonLeagueBattlesUseCase(userIds: string[]): Promise<void> {
