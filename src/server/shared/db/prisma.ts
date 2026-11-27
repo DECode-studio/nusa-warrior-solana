@@ -10,6 +10,23 @@ export function isPrismaDriverEnabled(): boolean {
   return process.env.NUSANTARA_STORAGE_DRIVER === "prisma";
 }
 
+function normalizePostgresConnectionString(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    if (url.searchParams.has("uselibpqcompat")) {
+      return rawUrl;
+    }
+    const sslMode = url.searchParams.get("sslmode")?.toLowerCase();
+    if (sslMode === "prefer" || sslMode === "require" || sslMode === "verify-ca") {
+      url.searchParams.set("sslmode", "verify-full");
+      return url.toString();
+    }
+    return rawUrl;
+  } catch {
+    return rawUrl;
+  }
+}
+
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -18,7 +35,7 @@ function createPrismaClient(): PrismaClient {
   // Tuning pg.Pool untuk mencegah pool exhaustion saat banyak request battle concurrent ke Neon.
   const poolMax = Number(process.env.DATABASE_POOL_MAX ?? 20);
   const adapter = new PrismaPg({
-    connectionString,
+    connectionString: normalizePostgresConnectionString(connectionString),
     max: Number.isFinite(poolMax) && poolMax > 0 ? poolMax : 20,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,

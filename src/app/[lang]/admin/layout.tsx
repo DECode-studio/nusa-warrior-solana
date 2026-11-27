@@ -24,6 +24,6 @@ export default async function AdminLayout({
     redirect(ROUTES.LOGIN(locale));
   }
 
-  return <AdminLayoutShell>{children}</AdminLayoutShell>;
+  return <AdminLayoutShell initialAdminUser={session}>{children}</AdminLayoutShell>;
 }
 
