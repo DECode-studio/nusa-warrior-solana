@@ -6,9 +6,13 @@ import {
   REFRESH_COOKIE_NAME,
   REFRESH_TOKEN_TTL_SECONDS,
   SESSION_COOKIE_NAME,
+  revokeCurrentSession,
 } from "@/server/shared/auth/session";
 import { assertSameOriginMutation } from "@/server/shared/auth/request-security";
-import { enforceRateLimit } from "@/server/shared/http/distributed-rate-limit";
+import {
+  enforceRateLimit,
+  resetDistributedRateLimit,
+} from "@/server/shared/http/distributed-rate-limit";
 import { getClientIp } from "@/server/shared/http/client-ip";
 import {
   handleRouteError,
@@ -37,6 +41,8 @@ export async function POST(request: Request): Promise<Response> {
       refillPerSecond: 1 / 300,
     });
     const result = await loginWithCredentialsUseCase(parsed);
+    await revokeCurrentSession().catch(() => undefined);
+    await resetDistributedRateLimit(`auth:admin-login:${clientIp}:${identity}`).catch(() => undefined);
 
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, result.accessToken, {

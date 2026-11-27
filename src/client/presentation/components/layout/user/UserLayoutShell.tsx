@@ -1,10 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ROUTES } from "@/core/constants/routes";
 import { getService } from "@/core/di/container";
 import { AUTH_USECASE_TOKEN, DECK_USECASE_TOKEN } from "@/core/di/tokens";
+import {
+  clearAuthRefreshCache,
+  runWithAuthMutationLock,
+} from "@/core/http-client/auth-refresh";
 import { useTranslator } from "@/core/translator";
 import { USER_LAYOUT_SEMANTIC_IDS } from "./constants/SemanticIdConstant";
 import { USER_LAYOUT_TEXT_CONSTANT } from "./constants/TextConstant";
@@ -27,7 +31,6 @@ export interface UserLayoutShellProps {
 export function UserLayoutShell({
   children,
 }: UserLayoutShellProps): React.ReactElement {
-  const router = useRouter();
   const pathname = usePathname();
   const { locale, t } = useTranslator();
 
@@ -78,10 +81,10 @@ export function UserLayoutShell({
     setIsLoggingOut(true);
     try {
       const authUseCase = getService(AUTH_USECASE_TOKEN);
-      await authUseCase.logout();
-      router.push(ROUTES.USER_LOGIN(locale));
-      router.refresh();
-    } finally {
+      await runWithAuthMutationLock(() => authUseCase.logout());
+      clearAuthRefreshCache();
+      window.location.assign(`${ROUTES.USER_LOGIN(locale)}?loggedOut=1`);
+    } catch {
       setIsLoggingOut(false);
     }
   };

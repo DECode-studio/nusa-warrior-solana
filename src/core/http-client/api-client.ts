@@ -1,3 +1,5 @@
+import { refreshAuthSession } from "./auth-refresh";
+
 export class ApiClientError extends Error {
   public readonly status: number;
   public readonly code: string;
@@ -83,6 +85,7 @@ async function request<T>(
     method,
     headers,
     credentials: "include",
+    ...(path.startsWith("/api/v1/auth/") ? { cache: "no-store" as const } : {}),
     body: isFormData
       ? (options.body as FormData)
       : options.body !== undefined
@@ -95,7 +98,7 @@ async function request<T>(
     path !== "/api/v1/auth/login" &&
     path !== "/api/v1/auth/logout" &&
     path !== "/api/v1/auth/refresh";
-  if (shouldRefresh && await refreshSession()) {
+  if (shouldRefresh && await refreshAuthSession({ force: true })) {
     response = await fetch(url, init);
   }
 
@@ -144,22 +147,6 @@ async function request<T>(
     return (parsed as EnvelopePayload<T>).data as T;
   }
   return parsed as T;
-}
-
-let refreshPromise: Promise<boolean> | null = null;
-
-function refreshSession(): Promise<boolean> {
-  if (!refreshPromise) {
-    refreshPromise = fetch("/api/v1/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    })
-      .then((response) => response.ok)
-      .catch(() => false)
-      .finally(() => { refreshPromise = null; });
-  }
-  return refreshPromise;
 }
 
 export const apiClient = {

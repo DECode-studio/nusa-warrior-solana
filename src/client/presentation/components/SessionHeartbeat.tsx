@@ -1,28 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { refreshAuthSession } from "@/core/http-client/auth-refresh";
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const VISIBILITY_REFRESH_MIN_INTERVAL_MS = 5 * 60 * 1000;
 
 export function SessionHeartbeat(): null {
   useEffect(() => {
-    let refreshInProgress: Promise<void> | null = null;
-    const refresh = (): Promise<void> => {
-      if (refreshInProgress) return refreshInProgress;
-      refreshInProgress = fetch("/api/v1/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then(() => undefined)
-        .catch(() => undefined)
-        .finally(() => { refreshInProgress = null; });
-      return refreshInProgress;
+    const refresh = (): void => {
+      void refreshAuthSession({
+        minIntervalMs: VISIBILITY_REFRESH_MIN_INTERVAL_MS,
+      });
     };
 
-    const interval = window.setInterval(() => { void refresh(); }, REFRESH_INTERVAL_MS);
+    const interval = window.setInterval(refresh, REFRESH_INTERVAL_MS);
     const handleVisibility = (): void => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") refresh();
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
