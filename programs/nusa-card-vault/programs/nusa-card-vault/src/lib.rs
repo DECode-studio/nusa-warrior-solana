@@ -11,7 +11,9 @@ declare_id!("GWbea8uHeLSiMKwuL8UDeBhg3k83v6QnKwswiTCmJ6GU");
 pub const MPL_CORE_PROGRAM_ID: Pubkey =
     pubkey!("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
 
-const MAX_MATCH_ID_LEN: usize = 48;
+// Solana caps individual PDA seeds at 32 bytes; callers must pass <= 32-byte match IDs
+// (e.g. hyphenless 32-char UUID hex) while BattleVault.match_id retains max_len(48) for layout compatibility.
+const MAX_MATCH_ID_LEN: usize = 32;
 
 #[program]
 pub mod nusa_card_vault {

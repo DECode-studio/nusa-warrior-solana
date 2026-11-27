@@ -122,10 +122,27 @@ async function fetchActiveEscrowQuantities(
   const quantities = new Map<string, number>();
   if (!isPrismaDriverEnabled()) return quantities;
 
-  const openEscrows = await prisma.cardEscrow.findMany({
-    where: { ownerUserId: userId, status: "OPEN" },
-    include: { items: true },
-  });
+  const [openEscrows, activeVaultSessions] = await Promise.all([
+    prisma.cardEscrow.findMany({
+      where: { ownerUserId: userId, status: "OPEN" },
+      include: { items: true },
+    }),
+    prisma.battleSession.findMany({
+      where: {
+        status: "ACTIVE",
+        isQuickMatch: true,
+        vaultPda: { not: null },
+        OR: [
+          { userId, playerLockTxSignature: { not: null } },
+          { opponentUserId: userId, opponentLockTxSignature: { not: null } },
+        ],
+      },
+      select: {
+        userId: true,
+        eventsJson: true,
+      },
+    }),
+  ]);
 
   for (const escrow of openEscrows) {
     for (const item of escrow.items) {
@@ -135,6 +152,58 @@ async function fetchActiveEscrowQuantities(
       );
     }
   }
+
+  if (activeVaultSessions.length > 0) {
+    const lockedQtyBySlug = new Map<string, number>();
+    for (const session of activeVaultSessions) {
+      const targetSide = session.userId === userId ? "PLAYER" : "OPPONENT";
+      let events: unknown;
+      try {
+        events = JSON.parse(session.eventsJson || "[]");
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(events)) continue;
+      let latestCards: Array<{ cardSlug: string; quantity: number }> = [];
+      for (const item of events) {
+        if (!item || typeof item !== "object") continue;
+        const ev = item as Record<string, unknown>;
+        if (ev.type !== "VAULT_LOCKED" || ev.side !== targetSide) continue;
+        if (!Array.isArray(ev.cards)) continue;
+        latestCards = ev.cards.filter(
+          (card): card is { cardSlug: string; quantity: number } =>
+            Boolean(
+              card &&
+                typeof card === "object" &&
+                typeof (card as Record<string, unknown>).cardSlug === "string" &&
+                typeof (card as Record<string, unknown>).quantity === "number"
+            )
+        );
+      }
+      for (const card of latestCards) {
+        if (card.quantity > 0) {
+          lockedQtyBySlug.set(
+            card.cardSlug,
+            (lockedQtyBySlug.get(card.cardSlug) ?? 0) + card.quantity
+          );
+        }
+      }
+    }
+
+    if (lockedQtyBySlug.size > 0) {
+      const cards = await prisma.card.findMany({
+        where: { slug: { in: [...lockedQtyBySlug.keys()] } },
+        select: { id: true, slug: true },
+      });
+      for (const card of cards) {
+        const qty = lockedQtyBySlug.get(card.slug) ?? 0;
+        if (qty > 0) {
+          quantities.set(card.id, (quantities.get(card.id) ?? 0) + qty);
+        }
+      }
+    }
+  }
+
   return quantities;
 }
 
