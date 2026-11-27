@@ -397,17 +397,34 @@ export function useBattleArena(): UseBattleArenaReturn {
 
   useEffect(() => {
     if (!isBattleStarted || !sessionIdRef.current || battleState?.phase === "MATCH_OVER") return;
-    const heartbeat = window.setInterval(() => {
-      const matchId = sessionIdRef.current;
-      if (!matchId) return;
-      void getService(BATTLE_USECASE_TOKEN)
-        .reconnectSession(matchId)
-        .then((view) => {
-          if (view) applySessionView(view);
-        })
-        .catch(() => {});
-    }, isQuickMatch ? 2_000 : 15_000);
-    return () => window.clearInterval(heartbeat);
+    // Gunakan recursive setTimeout (in-flight guard) alih-alih setInterval agar request
+    // /reconnect tidak menumpuk paralel dan menghabiskan pool koneksi DB saat latency tinggi.
+    let cancelled = false;
+    let timerId: number | null = null;
+    const intervalMs = isQuickMatch ? 2_000 : 15_000;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timerId = window.setTimeout(() => {
+        const matchId = sessionIdRef.current;
+        if (cancelled || !matchId) return;
+        void getService(BATTLE_USECASE_TOKEN)
+          .reconnectSession(matchId)
+          .then((view) => {
+            if (!cancelled && view) applySessionView(view);
+          })
+          .catch(() => {})
+          .finally(() => {
+            scheduleNext();
+          });
+      }, intervalMs);
+    };
+
+    scheduleNext();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
   }, [applySessionView, battleState?.phase, isBattleStarted, isQuickMatch]);
 
   const startNewMatch = useCallback(

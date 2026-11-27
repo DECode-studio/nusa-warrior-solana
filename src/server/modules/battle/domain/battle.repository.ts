@@ -103,7 +103,8 @@ export interface BattleRepository {
     completion?: CreateMatchLogInput;
   }): Promise<import("@/server/shared/db/embedded-store").StoredBattleSessionRecord | null>;
   reconnectBattleSession(id: string, userId: string, now: Date, staleMs: number, graceMs: number): Promise<import("@/server/shared/db/embedded-store").StoredBattleSessionRecord | null>;
-  sweepBattleSessions(now: Date, staleBefore: Date, graceMs: number): Promise<number>;
+  // Parameter opsional sessionId membatasi sweep ke 1 sesi saat dipanggil dari request user.
+  sweepBattleSessions(now: Date, staleBefore: Date, graceMs: number, sessionId?: string): Promise<number>;
   processQuickMatchQueue(input: {
     userId: string;
     enqueue?: QuickMatchQueueInput;

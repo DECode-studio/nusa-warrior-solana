@@ -243,7 +243,7 @@ export class BattleRepositoryImpl implements BattleRepository {
         });
         const matched = await tx.quickMatchQueueEntry.findUniqueOrThrow({ where: { id: current.id } });
         return { queue: toQueueRecord(matched), session: toStoredSession(session) };
-      });
+      }, { maxWait: 10_000, timeout: 15_000 }); // Perpanjang timeout transaksi matchmaking agar toleran terhadap latency Neon.
       return result;
     }
 
@@ -483,6 +483,45 @@ export class BattleRepositoryImpl implements BattleRepository {
   }): Promise<StoredBattleSessionRecord | null> {
     const now = new Date();
     if (isPrismaDriverEnabled()) {
+      // Untuk aksi normal (tanpa completion), jalankan updateMany atomik dengan optimistic lock
+      // `sequence` di luar $transaction agar tidak menahan koneksi pool & menghindari timeout 5s.
+      if (!input.completion) {
+        const participant = await prisma.battleSession.findUnique({
+          where: { id: input.id },
+          select: { userId: true, opponentUserId: true },
+        });
+        if (!participant || (participant.userId !== input.userId && participant.opponentUserId !== input.userId)) {
+          return null;
+        }
+        const actorIsOpponent = participant.opponentUserId === input.userId;
+        const changed = await prisma.battleSession.updateMany({
+          where: {
+            id: input.id,
+            OR: [{ userId: input.userId }, { opponentUserId: input.userId }],
+            sequence: input.expectedSequence,
+            status: "ACTIVE",
+          },
+          data: {
+            sequence: { increment: 1 },
+            stateJson: input.stateJson,
+            eventsJson: input.eventsJson,
+            status: input.status,
+            rngCounter: input.rngCounter,
+            rngDrawsJson: input.rngDrawsJson,
+            ...(actorIsOpponent
+              ? { opponentLastSeenAt: now, opponentDisconnectedAt: null, opponentReconnectDeadlineAt: null }
+              : { lastSeenAt: now, disconnectedAt: null, reconnectDeadlineAt: null }),
+            turnDeadlineAt: input.status === "ACTIVE" ? new Date(now.getTime() + 5 * 60_000) : null,
+            updatedAt: now,
+          },
+        });
+        if (changed.count !== 1) return null;
+        const row = await prisma.battleSession.findFirst({
+          where: { id: input.id, OR: [{ userId: input.userId }, { opponentUserId: input.userId }] },
+        });
+        return row ? toStoredSession(row) : null;
+      }
+
       let completionStage = "transaction_started";
       const completionAuditState: { current: {
         winnerUserId: string;
@@ -662,7 +701,8 @@ export class BattleRepositoryImpl implements BattleRepository {
         }
         completionStage = "loading_saved_session";
         return tx.battleSession.findFirst({ where: { id: input.id, OR: [{ userId: input.userId }, { opponentUserId: input.userId }] } });
-      }).catch((error: unknown) => {
+      }, { maxWait: 10_000, timeout: 15_000 }) // Perpanjang timeout untuk transaksi completion (transfer kartu PvP + ledger + poin).
+        .catch((error: unknown) => {
         if (input.completion?.quickMatch) {
           logServerEvent("error", "battle.session.completion_failed", {
             matchId: input.id,
@@ -896,54 +936,55 @@ export class BattleRepositoryImpl implements BattleRepository {
     graceMs: number
   ): Promise<StoredBattleSessionRecord | null> {
     if (isPrismaDriverEnabled()) {
-      return prisma.$transaction(async (tx) => {
-        const current = await tx.battleSession.findFirst({ where: { id, OR: [{ userId }, { opponentUserId: userId }] } });
-        if (!current) return null;
-        if (current.status === "COMPLETED") return toStoredSession(current);
-        if (current.status !== "ACTIVE") return null;
-        const isOpponent = current.opponentUserId === userId;
-        const lastSeenAt = (isOpponent ? current.opponentLastSeenAt : current.lastSeenAt) ?? current.createdAt;
-        const disconnectDeadline = isOpponent ? current.opponentReconnectDeadlineAt : current.reconnectDeadlineAt;
-        const staleAt = lastSeenAt.getTime() + staleMs;
-        const isLeagueSession = current.rulesVersion === "league-v1";
-        const deadlineAt = disconnectDeadline?.getTime() ??
-          (now.getTime() > staleAt ? (isLeagueSession ? lastSeenAt.getTime() + graceMs : staleAt + graceMs) : Number.POSITIVE_INFINITY);
-        if (
-          deadlineAt <= now.getTime() ||
-          (current.turnDeadlineAt && current.turnDeadlineAt.getTime() <= now.getTime())
-        ) {
-          const event = {
-            type: "TIMEOUT",
-            auditSequence: (JSON.parse(current.eventsJson || "[]") as unknown[]).length,
-            cause: deadlineAt <= now.getTime() ? "RECONNECT_GRACE_EXPIRED" : "TURN_DEADLINE_EXPIRED",
-            at: now.toISOString(),
-          };
-          await tx.battleSession.updateMany({
-            where: { id, OR: [{ userId }, { opponentUserId: userId }], status: "ACTIVE", sequence: current.sequence },
-            data: {
-              sequence: { increment: 1 },
-              eventsJson: appendAuditEvent(current.eventsJson, event),
-              status: "ABANDONED",
-              turnDeadlineAt: null,
-              updatedAt: now,
-            },
-          });
-          return null;
-        }
-        const changed = await tx.battleSession.updateMany({
-          where: { id, OR: [{ userId }, { opponentUserId: userId }], sequence: current.sequence, status: "ACTIVE" },
+      // Tidak memakai prisma.$transaction agar heartbeat /reconnect tidak menahan koneksi pool
+      // dan tidak terkena interactive transaction timeout (5000ms) saat row-lock contention.
+      const current = await prisma.battleSession.findFirst({ where: { id, OR: [{ userId }, { opponentUserId: userId }] } });
+      if (!current) return null;
+      if (current.status === "COMPLETED") return toStoredSession(current);
+      if (current.status !== "ACTIVE") return null;
+      const isOpponent = current.opponentUserId === userId;
+      const lastSeenAt = (isOpponent ? current.opponentLastSeenAt : current.lastSeenAt) ?? current.createdAt;
+      const disconnectDeadline = isOpponent ? current.opponentReconnectDeadlineAt : current.reconnectDeadlineAt;
+      const staleAt = lastSeenAt.getTime() + staleMs;
+      const isLeagueSession = current.rulesVersion === "league-v1";
+      const deadlineAt = disconnectDeadline?.getTime() ??
+        (now.getTime() > staleAt ? (isLeagueSession ? lastSeenAt.getTime() + graceMs : staleAt + graceMs) : Number.POSITIVE_INFINITY);
+      if (
+        deadlineAt <= now.getTime() ||
+        (current.turnDeadlineAt && current.turnDeadlineAt.getTime() <= now.getTime())
+      ) {
+        const event = {
+          type: "TIMEOUT",
+          auditSequence: (JSON.parse(current.eventsJson || "[]") as unknown[]).length,
+          cause: deadlineAt <= now.getTime() ? "RECONNECT_GRACE_EXPIRED" : "TURN_DEADLINE_EXPIRED",
+          at: now.toISOString(),
+        };
+        await prisma.battleSession.updateMany({
+          where: { id, OR: [{ userId }, { opponentUserId: userId }], status: "ACTIVE", sequence: current.sequence },
           data: {
-            ...(isOpponent
-              ? { opponentLastSeenAt: now, opponentDisconnectedAt: null, opponentReconnectDeadlineAt: null }
-              : { lastSeenAt: now, disconnectedAt: null, reconnectDeadlineAt: null }),
-            ...(current.rulesVersion === "league-v1" ? { turnDeadlineAt: new Date(now.getTime() + 5 * 60_000) } : {}),
+            sequence: { increment: 1 },
+            eventsJson: appendAuditEvent(current.eventsJson, event),
+            status: "ABANDONED",
+            turnDeadlineAt: null,
             updatedAt: now,
           },
         });
-        if (changed.count !== 1) return null;
-        const latest = await tx.battleSession.findFirst({ where: { id, OR: [{ userId }, { opponentUserId: userId }] } });
-        return latest ? toStoredSession(latest) : null;
+        return null;
+      }
+      // Heartbeat normal tidak memfilter `sequence` agar tidak bentrok (409) saat aksi berjalan bersamaan.
+      const changed = await prisma.battleSession.updateMany({
+        where: { id, OR: [{ userId }, { opponentUserId: userId }], status: "ACTIVE" },
+        data: {
+          ...(isOpponent
+            ? { opponentLastSeenAt: now, opponentDisconnectedAt: null, opponentReconnectDeadlineAt: null }
+            : { lastSeenAt: now, disconnectedAt: null, reconnectDeadlineAt: null }),
+          ...(current.rulesVersion === "league-v1" ? { turnDeadlineAt: new Date(now.getTime() + 5 * 60_000) } : {}),
+          updatedAt: now,
+        },
       });
+      if (changed.count !== 1) return null;
+      const latest = await prisma.battleSession.findFirst({ where: { id, OR: [{ userId }, { opponentUserId: userId }] } });
+      return latest ? toStoredSession(latest) : null;
     }
 
     const store = getEmbeddedStore();
@@ -997,11 +1038,14 @@ export class BattleRepositoryImpl implements BattleRepository {
   public async sweepBattleSessions(
     now: Date,
     staleBefore: Date,
-    graceMs: number
+    graceMs: number,
+    sessionId?: string
   ): Promise<number> {
+    // Jika sessionId diberikan (dari /reconnect atau /actions), hanya sweep sesi tersebut
+    // agar tidak melakukan full scan & lock pada semua sesi ACTIVE.
     const activeSessions: StoredBattleSessionRecord[] = isPrismaDriverEnabled()
-      ? (await prisma.battleSession.findMany({ where: { status: "ACTIVE" } })).map(toStoredSession)
-      : getEmbeddedStore().battleSessions.filter((session) => session.status === "ACTIVE");
+      ? (await prisma.battleSession.findMany({ where: { status: "ACTIVE", ...(sessionId ? { id: sessionId } : {}) } })).map(toStoredSession)
+      : getEmbeddedStore().battleSessions.filter((session) => session.status === "ACTIVE" && (!sessionId || session.id === sessionId));
     const quickStaleBefore = new Date(now.getTime() - 15_000);
 
     for (const session of activeSessions) {
@@ -1077,8 +1121,8 @@ export class BattleRepositoryImpl implements BattleRepository {
     }
 
     const latestSessions: StoredBattleSessionRecord[] = isPrismaDriverEnabled()
-      ? (await prisma.battleSession.findMany({ where: { status: "ACTIVE" } })).map(toStoredSession)
-      : getEmbeddedStore().battleSessions.filter((session) => session.status === "ACTIVE");
+      ? (await prisma.battleSession.findMany({ where: { status: "ACTIVE", ...(sessionId ? { id: sessionId } : {}) } })).map(toStoredSession)
+      : getEmbeddedStore().battleSessions.filter((session) => session.status === "ACTIVE" && (!sessionId || session.id === sessionId));
     let completed = 0;
     for (const session of latestSessions) {
       const expiredOwner = Boolean(session.reconnectDeadlineAt && Date.parse(session.reconnectDeadlineAt) <= now.getTime());
