@@ -25,6 +25,7 @@ import {
 } from "@/server/modules/battle/domain/auditable-rng";
 import { battleRepository } from "@/server/modules/battle/infrastructure/battle.repository.impl";
 import { surrenderPendingNonLeagueBattlesUseCase } from "@/server/modules/battle/application/battle.usecase";
+import { settleCompletedBattleVaultOnChain } from "@/server/modules/solana/battle-vault-orchestrator.service";
 import { leagueRepository } from "../infrastructure/league.repository.impl";
 import type { LeagueBattleSessionInput, LeagueRoomRecord, LeagueRoundMatchInput } from "../domain/league.repository";
 
@@ -633,6 +634,9 @@ async function resolveLeagueBattleDurations(record: LeagueRoomRecord): Promise<L
       rngDrawsJson: JSON.stringify([...JSON.parse(session.rngDrawsJson || "[]") as unknown[], ...rng.draws]),
       completion,
     });
+    if (session.vaultPda) {
+      await settleCompletedBattleVaultOnChain({ matchId: session.id });
+    }
   }
   return await leagueRepository.findRoom(record.id, true, record.creatorId) ?? record;
 }

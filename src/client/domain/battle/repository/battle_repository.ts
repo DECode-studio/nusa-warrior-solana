@@ -2,7 +2,9 @@ import type {
   BattleActionSubmission,
   BattleSessionEntity,
   BotDifficulty,
+  ConfirmVaultLockEntity,
   MatchLogEntity,
+  PrepareVaultLockEntity,
   QuickMatchQueueEntity,
 } from "../entity/battle_entity";
 
@@ -24,5 +26,10 @@ export interface BattleRepository {
   getQuickMatchStatus(): Promise<QuickMatchQueueEntity | null>;
   searchQuickMatch(): Promise<QuickMatchQueueEntity | null>;
   cancelQuickMatch(): Promise<boolean>;
+  prepareVaultLock(id: string): Promise<PrepareVaultLockEntity>;
+  confirmVaultLock(
+    id: string,
+    txSignatures: string[]
+  ): Promise<ConfirmVaultLockEntity>;
 }
 

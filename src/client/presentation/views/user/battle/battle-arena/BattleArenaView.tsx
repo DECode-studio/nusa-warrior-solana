@@ -24,6 +24,7 @@ import {
   BattleMatchOverModal,
   BattleSurrenderModal,
   BattleTurnChangeModal,
+  BattleVaultLockOverlay,
   type BattleTurnChangeNotice,
   BattleCardActionBottomSheet,
   type MobileCardTarget,
@@ -73,6 +74,7 @@ export function BattleArenaView(): React.ReactElement {
     dealAnimationToken,
     confirmingSurrender,
     setConfirmingSurrender,
+    isSurrendering,
     startNewMatch,
     handleDiceRollComplete,
     handleDiceRollAnimationComplete,
@@ -94,6 +96,16 @@ export function BattleArenaView(): React.ReactElement {
     storyOpponentTitle,
     rewardCardSlug,
     rewardCardQuantity,
+    vaultPda,
+    viewerLockTxSignature,
+    settleTxSignature,
+    vaultLockRequired,
+    viewerVaultLocked,
+    opponentVaultLocked,
+    isLockingVault,
+    vaultLockError,
+    handleLockCardsToVault,
+    handleCancelPreLockMatch,
   } = useBattleArena();
 
   const [showLogDrawer, setShowLogDrawer] = useState(false);
@@ -259,6 +271,9 @@ export function BattleArenaView(): React.ReactElement {
     : "";
 
   const isMatchOver = battleState.phase === "MATCH_OVER";
+  const needsVaultLock = Boolean(
+    vaultLockRequired && (!viewerVaultLocked || !opponentVaultLocked) && !isMatchOver
+  );
   const isInitialDealPending =
     battleState.phase === "DICE_ROLL" && !isOpeningDealAnimating;
 
@@ -638,6 +653,7 @@ export function BattleArenaView(): React.ReactElement {
       {/* Surrender Confirmation Modal */}
       <BattleSurrenderModal
         isOpen={confirmingSurrender}
+        isSubmitting={isSurrendering}
         onCancel={() => setConfirmingSurrender(false)}
         onConfirm={handleSurrender}
       />
@@ -653,7 +669,27 @@ export function BattleArenaView(): React.ReactElement {
       />
 
       {/* OVERLAYS */}
-      {showDiceOverlay && (
+      {needsVaultLock && (
+        <BattleVaultLockOverlay
+          isOpen={needsVaultLock}
+          isLeagueMatch={isLeagueMatch}
+          vaultPda={vaultPda}
+          viewerLockTxSignature={viewerLockTxSignature}
+          viewerVaultLocked={viewerVaultLocked}
+          opponentVaultLocked={opponentVaultLocked}
+          isLocking={isLockingVault}
+          isCancelling={isSurrendering}
+          errorMessage={vaultLockError ? t(vaultLockError) : null}
+          onLockCards={() => void handleLockCardsToVault()}
+          onCancelMatch={() => {
+            void handleCancelPreLockMatch().then((cancelled) => {
+              if (cancelled) exitToLobby();
+            });
+          }}
+        />
+      )}
+
+      {showDiceOverlay && !needsVaultLock && (
         <DiceRollOverlay
           isOpen={showDiceOverlay}
           onRollComplete={handleDiceRollComplete}
@@ -767,6 +803,14 @@ export function BattleArenaView(): React.ReactElement {
         rewardCard={rewardCardSlug ? cardsBySlug.get(rewardCardSlug) ?? null : null}
         rewardCardName={rewardCardSlug ? cardsBySlug.get(rewardCardSlug)?.name ?? rewardCardSlug : null}
         rewardCardQuantity={rewardCardQuantity}
+        vaultPda={vaultPda}
+        lockTxSignature={viewerLockTxSignature}
+        settleTxSignature={settleTxSignature}
+        isSettlingVault={Boolean(
+          (isQuickMatch || isLeagueMatch) &&
+            vaultLockRequired &&
+            !settleTxSignature
+        )}
         onNewMatch={() => startNewMatch()}
         onExitToLobby={exitToLobby}
       />

@@ -190,6 +190,7 @@ export function IntellioNavbar({
             {/* Enter Arena CTA Button */}
             <Link
               href={ROUTES.USER_DASHBOARD(locale)}
+              prefetch={false}
               id="nav-user-console-btn"
               className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#6766FF] to-[#5856F2] px-3.5 py-1.5 font-display text-xs font-bold tracking-wider text-white uppercase shadow-[0_4px_16px_rgba(103,102,255,0.4)] transition hover:brightness-110 sm:px-4 sm:py-2"
             >

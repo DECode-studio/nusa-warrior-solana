@@ -10,7 +10,9 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const session = await getCurrentSession();
     if (!session) {
-      return okResponse(null);
+      const response = okResponse(null);
+      response.headers.set("Cache-Control", "no-store");
+      return response;
     }
     const [unclaimedNusa, tokenBalances] = await Promise.all([
       getUnclaimedNusaBalance(session.userId),
@@ -18,12 +20,14 @@ export async function GET(request: Request): Promise<Response> {
         ? getWalletTokenBalances(session.walletAddress).catch(() => null)
         : Promise.resolve(null),
     ]);
-    return okResponse({
+    const response = okResponse({
       ...session,
       nusaPoints: tokenBalances ? tokenBalances.nusa : 0,
       unclaimedNusa,
       tokenBalances,
     });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error: unknown) {
     return handleRouteError(error, request);
   }

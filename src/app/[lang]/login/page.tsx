@@ -1,9 +1,10 @@
 import React from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PublicLoginView } from "@/client/presentation/views/public";
 import { SessionResume } from "@/client/presentation/components/SessionResume";
 import { DEFAULT_LOCALE, isSupportedLocale, ROUTES } from "@/core/constants/routes";
-import { getCurrentSession } from "@/server/shared/auth/session";
+import { getCurrentSession, REFRESH_COOKIE_NAME } from "@/server/shared/auth/session";
 
 interface LoginPageProps {
   readonly params: Promise<{ lang: string }>;
@@ -21,8 +22,11 @@ export default async function LoginPage({ params }: LoginPageProps): Promise<Rea
     redirect(ROUTES.ADMIN_DASHBOARD(locale));
   }
 
+  const cookieStore = await cookies();
+  const hasRefreshCookie = Boolean(cookieStore.get(REFRESH_COOKIE_NAME)?.value);
+
   return <>
-    <SessionResume />
+    {hasRefreshCookie ? <SessionResume /> : null}
     <PublicLoginView />
   </>;
 }

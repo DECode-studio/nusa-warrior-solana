@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import type {
   BattleDuelOutcome,
   BattleAction,
@@ -18,6 +19,7 @@ import {
   STORY_MODE_USECASE_TOKEN,
 } from "@/core/di/tokens";
 import { gamelanAudio } from "@/core/utils/audio-synth";
+import { sendBatchBase64SolanaTxs } from "@/core/utils/solana-tx-client";
 import { BATTLE_TEXT_CONSTANT } from "../constants/TextConstant";
 
 const ACTIVE_BATTLE_SESSION_KEY = "nusa-active-battle-session";
@@ -88,6 +90,7 @@ export interface UseBattleArenaReturn {
   dealAnimationToken: number;
   confirmingSurrender: boolean;
   setConfirmingSurrender: (val: boolean) => void;
+  isSurrendering: boolean;
   startNewMatch: (customDeckId?: string, customDiff?: BotDifficulty) => void;
   handleDiceRollComplete: (_rolls?: { playerRoll: number; botRoll: number }) => Promise<void>;
   handleDiceRollAnimationComplete: () => void;
@@ -108,6 +111,16 @@ export interface UseBattleArenaReturn {
   isLeagueMatch: boolean;
   rewardCardSlug: string | null;
   rewardCardQuantity: number | null;
+  vaultPda: string | null;
+  viewerLockTxSignature: string | null;
+  settleTxSignature: string | null;
+  vaultLockRequired: boolean;
+  viewerVaultLocked: boolean;
+  opponentVaultLocked: boolean;
+  isLockingVault: boolean;
+  vaultLockError: string | null;
+  handleLockCardsToVault: () => Promise<void>;
+  handleCancelPreLockMatch: () => Promise<boolean>;
   isStoryMode: boolean;
   storyNusaPoints: number | null;
   storyKingdom: "MAJAPAHIT" | "PAJAJARAN" | null;
@@ -115,6 +128,14 @@ export interface UseBattleArenaReturn {
 }
 
 export function useBattleArena(): UseBattleArenaReturn {
+  const { connection } = useConnection();
+  const {
+    connected,
+    publicKey,
+    signAllTransactions,
+    signTransaction,
+    sendTransaction,
+  } = useWallet();
   const [isBattleStarted, setIsBattleStarted] = useState<boolean>(false);
   const [allCards, setAllCards] = useState<CardEntity[]>([]);
   const [decks, setDecks] = useState<DeckEntity[]>([]);
@@ -151,10 +172,19 @@ export function useBattleArena(): UseBattleArenaReturn {
   const [dealAnimationToken, setDealAnimationToken] = useState<number>(0);
   const [confirmingSurrender, setConfirmingSurrender] =
     useState<boolean>(false);
+  const [isSurrendering, setIsSurrendering] = useState<boolean>(false);
   const [isQuickMatch, setIsQuickMatch] = useState(false);
   const [isLeagueMatch, setIsLeagueMatch] = useState(false);
   const [rewardCardSlug, setRewardCardSlug] = useState<string | null>(null);
   const [rewardCardQuantity, setRewardCardQuantity] = useState<number | null>(null);
+  const [vaultPda, setVaultPda] = useState<string | null>(null);
+  const [viewerLockTxSignature, setViewerLockTxSignature] = useState<string | null>(null);
+  const [settleTxSignature, setSettleTxSignature] = useState<string | null>(null);
+  const [vaultLockRequired, setVaultLockRequired] = useState(false);
+  const [viewerVaultLocked, setViewerVaultLocked] = useState(false);
+  const [opponentVaultLocked, setOpponentVaultLocked] = useState(false);
+  const [isLockingVault, setIsLockingVault] = useState(false);
+  const [vaultLockError, setVaultLockError] = useState<string | null>(null);
   const [isStoryMode, setIsStoryMode] = useState(false);
   const [storyNusaPoints, setStoryNusaPoints] = useState<number | null>(null);
   const [storyKingdom, setStoryKingdom] = useState<"MAJAPAHIT" | "PAJAJARAN" | null>(null);
@@ -210,12 +240,24 @@ export function useBattleArena(): UseBattleArenaReturn {
     setIsStoryMode(Boolean(view.storyMissionId));
     setStoryKingdom(view.storyKingdom ?? null);
     setStoryOpponentTitle(view.opponentName ?? null);
+    setVaultPda(view.vaultPda ?? null);
+    setViewerLockTxSignature(view.viewerLockTxSignature ?? null);
+    setSettleTxSignature(view.settleTxSignature ?? null);
+    setVaultLockRequired(Boolean(view.vaultLockRequired));
+    setViewerVaultLocked(Boolean(view.viewerVaultLocked));
+    setOpponentVaultLocked(Boolean(view.opponentVaultLocked));
     if (view.id !== storyClaimedBattleIdRef.current) setStoryNusaPoints(null);
     if (view.rulesVersion !== "league-v1" && typeof window !== "undefined") {
       window.sessionStorage.removeItem(ACTIVE_LEAGUE_ROOM_KEY);
     }
     setRewardCardSlug(view.rewardCardSlug ?? null);
-    setRewardCardQuantity(null);
+    if (view.status === "ABANDONED") {
+      if (typeof window !== "undefined") {
+        if (readActiveBattleSessionId() === view.id) removeActiveBattleSessionId();
+      }
+      setIsBattleStarted(false);
+      return;
+    }
     if (typeof window !== "undefined") {
       const isTerminal = view.status !== "ACTIVE" || view.state.phase === "MATCH_OVER";
       if (isTerminal) {
@@ -396,18 +438,27 @@ export function useBattleArena(): UseBattleArenaReturn {
   }, [applySessionView]);
 
   useEffect(() => {
-    if (!isBattleStarted || !sessionIdRef.current || battleState?.phase === "MATCH_OVER") return;
+    const isMatchOver = battleState?.phase === "MATCH_OVER";
+    const waitingForSettlement = Boolean(
+      isMatchOver && vaultLockRequired && !settleTxSignature
+    );
+    if (!isBattleStarted || !sessionIdRef.current || (isMatchOver && !waitingForSettlement)) {
+      return;
+    }
     // Gunakan recursive setTimeout (in-flight guard) alih-alih setInterval agar request
     // /reconnect tidak menumpuk paralel dan menghabiskan pool koneksi DB saat latency tinggi.
     let cancelled = false;
     let timerId: number | null = null;
+    let postMatchRetries = 0;
     const intervalMs = isQuickMatch ? 2_000 : 15_000;
 
     const scheduleNext = () => {
       if (cancelled) return;
+      if (waitingForSettlement && postMatchRetries >= 25) return;
       timerId = window.setTimeout(() => {
         const matchId = sessionIdRef.current;
         if (cancelled || !matchId) return;
+        if (waitingForSettlement) postMatchRetries += 1;
         void getService(BATTLE_USECASE_TOKEN)
           .reconnectSession(matchId)
           .then((view) => {
@@ -425,7 +476,31 @@ export function useBattleArena(): UseBattleArenaReturn {
       cancelled = true;
       if (timerId !== null) window.clearTimeout(timerId);
     };
-  }, [applySessionView, battleState?.phase, isBattleStarted, isQuickMatch]);
+  }, [
+    applySessionView,
+    battleState?.phase,
+    isBattleStarted,
+    isQuickMatch,
+    settleTxSignature,
+    vaultLockRequired,
+  ]);
+
+  useEffect(() => {
+    if (battleState?.phase !== "MATCH_OVER" || !settleTxSignature) return;
+    void Promise.all([
+      getService(DECK_USECASE_TOKEN).getDecks(),
+      getService(CARD_USECASE_TOKEN).getOwnedCards(),
+    ])
+      .then(([updatedDecks, ownedCards]) => {
+        if (rewardCardSlug) {
+          setRewardCardQuantity(
+            ownedCards.find((card) => card.slug === rewardCardSlug)?.quantity ?? 0
+          );
+        }
+        setDecks(updatedDecks);
+      })
+      .catch(() => {});
+  }, [battleState?.phase, rewardCardSlug, settleTxSignature]);
 
   const startNewMatch = useCallback(
     (customDeckId?: string, customDiff?: BotDifficulty): void => {
@@ -751,14 +826,105 @@ export function useBattleArena(): UseBattleArenaReturn {
   }, [battleState, selectedHandInstanceId, submitBattleAction]);
 
   const handleSurrender = useCallback((): void => {
-    if (!battleState) return;
-    setConfirmingSurrender(false);
+    if (!battleState || isSurrendering) return;
+    setIsSurrendering(true);
     setSelectedHandInstanceId(null);
     setSelectedAttackerFrontIndex(null);
-    void submitBattleAction({ type: "SURRENDER" }).catch(() =>
-      setError(BATTLE_TEXT_CONSTANT.SURRENDER_ERROR)
-    );
-  }, [battleState, submitBattleAction]);
+    void submitBattleAction({ type: "SURRENDER" })
+      .catch(() => setError(BATTLE_TEXT_CONSTANT.SURRENDER_ERROR))
+      .finally(() => {
+        setIsSurrendering(false);
+        setConfirmingSurrender(false);
+      });
+  }, [battleState, isSurrendering, submitBattleAction]);
+
+  const handleLockCardsToVault = useCallback(async (): Promise<void> => {
+    const matchId = sessionIdRef.current;
+    if (!matchId || isLockingVault) return;
+    if (!connected || !publicKey) {
+      setVaultLockError(BATTLE_TEXT_CONSTANT.VAULT_LOCK_CONNECT_WALLET);
+      return;
+    }
+    setIsLockingVault(true);
+    setVaultLockError(null);
+    try {
+      const battleUseCase = getService(BATTLE_USECASE_TOKEN);
+      const prepared = await battleUseCase.prepareVaultLock(matchId);
+      setVaultPda(prepared.vaultPda);
+
+      if (!prepared.alreadyLocked && prepared.serializedTransactions.length > 0) {
+        const txSignatures = await sendBatchBase64SolanaTxs({
+          serializedTransactions: prepared.serializedTransactions,
+          connection,
+          signAllTransactions,
+          signTransaction,
+          sendTransaction,
+        });
+        await battleUseCase.confirmVaultLock(matchId, txSignatures);
+      }
+
+      const latest = await battleUseCase.reconnectSession(matchId);
+      if (latest) {
+        applySessionView(latest);
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : BATTLE_TEXT_CONSTANT.VAULT_LOCK_ERROR;
+      setVaultLockError(msg);
+    } finally {
+      setIsLockingVault(false);
+    }
+  }, [
+      applySessionView,
+      connected,
+      connection,
+      isLockingVault,
+      publicKey,
+      sendTransaction,
+      signAllTransactions,
+      signTransaction,
+    ]);
+
+  useEffect(() => {
+    if (!isLockingVault) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent): void => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isLockingVault]);
+
+  const handleCancelPreLockMatch = useCallback(async (): Promise<boolean> => {
+    const matchId = sessionIdRef.current;
+    if (!matchId || isSurrendering) return false;
+    setIsSurrendering(true);
+    setVaultLockError(null);
+    try {
+      const battleUseCase = getService(BATTLE_USECASE_TOKEN);
+      await battleUseCase.submitAction(matchId, {
+        expectedSequence: sessionSequenceRef.current,
+        idempotencyKey: crypto.randomUUID(),
+        action: { type: "SURRENDER" },
+      });
+      removeActiveBattleSessionId();
+      setIsBattleStarted(false);
+      return true;
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : BATTLE_TEXT_CONSTANT.SURRENDER_ERROR;
+      setVaultLockError(msg);
+      return false;
+    } finally {
+      setIsSurrendering(false);
+    }
+  }, [isSurrendering]);
 
   const completeDuelAnimation = useCallback((): void => {
     const deferredState = deferredDuelStateRef.current;
@@ -801,6 +967,7 @@ export function useBattleArena(): UseBattleArenaReturn {
     dealAnimationToken,
     confirmingSurrender,
     setConfirmingSurrender,
+    isSurrendering,
     startNewMatch,
     handleDiceRollComplete,
     handleDiceRollAnimationComplete,
@@ -818,6 +985,16 @@ export function useBattleArena(): UseBattleArenaReturn {
     isLeagueMatch,
     rewardCardSlug,
     rewardCardQuantity,
+    vaultPda,
+    viewerLockTxSignature,
+    settleTxSignature,
+    vaultLockRequired,
+    viewerVaultLocked,
+    opponentVaultLocked,
+    isLockingVault,
+    vaultLockError,
+    handleLockCardsToVault,
+    handleCancelPreLockMatch,
     isStoryMode,
     storyNusaPoints,
     storyKingdom,

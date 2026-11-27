@@ -1,6 +1,8 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 import { isPrismaDriverEnabled, prisma } from "@/server/shared/db/prisma";
+import { logServerEvent } from "@/server/shared/logging/server-logger";
 
 export type SolanaCluster = "devnet" | "mainnet-beta" | "testnet" | "localnet";
 
@@ -60,6 +62,55 @@ export function invalidateSolanaRpcPoolCache(): void {
   dbRpcCache = null;
 }
 
+const PUBLIC_SOLANA_RPC_HOSTS = new Set([
+  "api.devnet.solana.com",
+  "api.mainnet-beta.solana.com",
+  "api.testnet.solana.com",
+]);
+
+export function isPublicSolanaRpc(url: string): boolean {
+  try {
+    return PUBLIC_SOLANA_RPC_HOSTS.has(new URL(url.trim()).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+export function sortSolanaRpcEndpoints(
+  rows: Array<{ url: string; priority: number; createdAt?: Date | string }>
+): string[] {
+  const valid = rows
+    .map((row) => ({
+      url: row.url.trim(),
+      priority: row.priority,
+      createdAtMs:
+        row.createdAt instanceof Date
+          ? row.createdAt.getTime()
+          : typeof row.createdAt === "string"
+            ? Date.parse(row.createdAt) || 0
+            : 0,
+    }))
+    .filter((row) => row.url.length > 0 && /^https?:\/\//i.test(row.url));
+
+  valid.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    const publicDiff =
+      Number(isPublicSolanaRpc(a.url)) - Number(isPublicSolanaRpc(b.url));
+    if (publicDiff !== 0) return publicDiff;
+    return a.createdAtMs - b.createdAtMs;
+  });
+
+  return [...new Set(valid.map((row) => row.url))];
+}
+
+function redactRpcUrl(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "invalid-rpc-url";
+  }
+}
+
 export async function getSolanaRpcPoolAsync(): Promise<string[]> {
   if (dbRpcCache && dbRpcCache.expiresAt > Date.now()) {
     return dbRpcCache.urls;
@@ -71,18 +122,18 @@ export async function getSolanaRpcPoolAsync(): Promise<string[]> {
       const rows = await prisma.solanaRpcEndpoint.findMany({
         where: { network, isActive: true },
         orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-        select: { url: true },
+        select: { url: true, priority: true, createdAt: true },
       });
-      const dbUrls = rows
-        .map((r) => r.url.trim())
-        .filter((u) => /^https?:\/\//i.test(u));
+      const dbUrls = sortSolanaRpcEndpoints(rows);
       if (dbUrls.length > 0) {
-        const unique = [...new Set(dbUrls)];
+        const unique = [...new Set([...dbUrls, ...getSolanaRpcPool()])];
         dbRpcCache = { expiresAt: Date.now() + 30_000, urls: unique };
         return unique;
       }
-    } catch {
-      // Fall back to env/default RPC if DB query fails
+    } catch (error: unknown) {
+      logServerEvent("warn", "solana.rpc.db_pool_load_failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -98,19 +149,64 @@ export function markSolanaRpcRateLimited(
   rpcCooldownUntil.set(url, Date.now() + cooldownMs);
 }
 
-function pickFromPool(pool: string[]): string {
+function getOrderedHealthyPool(pool: string[]): string[] {
   const now = Date.now();
-  for (let i = 0; i < pool.length; i += 1) {
-    const idx = (roundRobinIndex + i) % pool.length;
-    const candidate = pool[idx];
-    if ((rpcCooldownUntil.get(candidate) ?? 0) <= now) {
-      roundRobinIndex = (idx + 1) % pool.length;
-      return candidate;
+  const healthy: string[] = [];
+  const cooledDown: string[] = [];
+  for (const url of pool) {
+    if ((rpcCooldownUntil.get(url) ?? 0) <= now) {
+      healthy.push(url);
+    } else {
+      cooledDown.push(url);
     }
   }
-  const fallback = pool[roundRobinIndex % pool.length];
-  roundRobinIndex = (roundRobinIndex + 1) % pool.length;
-  return fallback;
+  return [...healthy, ...cooledDown];
+}
+
+function hasRateLimitJsonRpcError(body: unknown): boolean {
+  const items = Array.isArray(body) ? body : [body];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const err = (item as { error?: unknown }).error;
+    if (!err || typeof err !== "object") continue;
+    const code = (err as { code?: unknown }).code;
+    if (code === -32429 || code === 429) return true;
+    const msg = (err as { message?: unknown }).message;
+    if (
+      typeof msg === "string" &&
+      /429|too many requests|rate limit|compute units per second/i.test(msg)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasBlockhashNotFoundError(body: unknown): boolean {
+  const items = Array.isArray(body) ? body : [body];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const err = (item as { error?: unknown }).error;
+    if (!err || typeof err !== "object") continue;
+    const msg = (err as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.includes("Blockhash not found")) {
+      return true;
+    }
+    const data = (err as { data?: unknown }).data;
+    if (
+      data &&
+      typeof data === "object" &&
+      (data as { err?: unknown }).err === "BlockhashNotFound"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function pickFromPool(pool: string[]): string {
+  const ordered = getOrderedHealthyPool(pool);
+  return ordered[0] ?? pool[roundRobinIndex % pool.length];
 }
 
 export function getNextSolanaRpcUrl(): string {
@@ -140,20 +236,65 @@ export async function executeWithSolanaConnection<T>(
   const pool = await getSolanaRpcPoolAsync();
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < pool.length; attempt += 1) {
-    const rpcUrl = pickFromPool(pool);
-    const connection = getSolanaConnection(rpcUrl);
-    try {
-      return await operation(connection);
-    } catch (error: unknown) {
-      lastError = error;
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes("429") || msg.includes("Too Many Requests")) {
-        markSolanaRpcRateLimited(rpcUrl);
-        continue;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const orderedPool = getOrderedHealthyPool(pool);
+    let sawRateLimit = false;
+
+    for (let attempt = 0; attempt < orderedPool.length; attempt += 1) {
+      const rpcUrl = orderedPool[attempt];
+      const connection = getSolanaConnection(rpcUrl);
+      try {
+        return await operation(connection);
+      } catch (error: unknown) {
+        lastError = error;
+        const msg = error instanceof Error ? error.message : String(error);
+        const isAuthErr =
+          msg.includes("401") ||
+          msg.includes("403") ||
+          msg.includes("Unauthorized") ||
+          msg.includes("Forbidden");
+        const isRateErr =
+          msg.includes("429") ||
+          msg.includes("Too Many Requests") ||
+          /rate limit|compute units per second/i.test(msg);
+        if (
+          isAuthErr ||
+          isRateErr ||
+          msg.includes("fetch failed") ||
+          msg.includes("ECONN") ||
+          msg.includes("ETIMEDOUT")
+        ) {
+          if (isRateErr) {
+            sawRateLimit = true;
+          }
+          const cooldownMs = isAuthErr
+            ? 60_000
+            : isPublicSolanaRpc(rpcUrl)
+              ? 30_000
+              : 15_000;
+          markSolanaRpcRateLimited(rpcUrl, cooldownMs);
+          logServerEvent("warn", "solana.rpc.connection_failover", {
+            rpc: redactRpcUrl(rpcUrl),
+            reason: msg.slice(0, 180),
+            attempt,
+            poolSize: orderedPool.length,
+          });
+          continue;
+        }
+        if (
+          msg.includes("Blockhash not found") &&
+          attempt < orderedPool.length - 1
+        ) {
+          continue;
+        }
+        throw error;
       }
-      throw error;
     }
+
+    if (!sawRateLimit || pass === 1) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
 
   throw lastError;
@@ -163,11 +304,12 @@ export async function forwardSolanaJsonRpc(
   payload: unknown
 ): Promise<{ status: number; body: unknown }> {
   const pool = await getSolanaRpcPoolAsync();
+  const orderedPool = getOrderedHealthyPool(pool);
   let lastStatus = 502;
-  const lastBody: unknown = { error: "All Solana RPC endpoints failed" };
+  let lastBody: unknown = { error: "All Solana RPC endpoints failed" };
 
-  for (let attempt = 0; attempt < pool.length; attempt += 1) {
-    const rpcUrl = pickFromPool(pool);
+  for (let attempt = 0; attempt < orderedPool.length; attempt += 1) {
+    const rpcUrl = orderedPool[attempt];
     try {
       const response = await fetch(rpcUrl, {
         method: "POST",
@@ -176,16 +318,60 @@ export async function forwardSolanaJsonRpc(
         signal: AbortSignal.timeout(12_000),
       });
 
-      if (response.status === 429 || response.status >= 500) {
-        markSolanaRpcRateLimited(rpcUrl);
+      if (
+        response.status === 429 ||
+        response.status === 401 ||
+        response.status === 403 ||
+        response.status >= 500
+      ) {
+        const isAuthErr = response.status === 401 || response.status === 403;
+        const cooldownMs = isAuthErr
+          ? 60_000
+          : isPublicSolanaRpc(rpcUrl)
+            ? 30_000
+            : 15_000;
+        markSolanaRpcRateLimited(rpcUrl, cooldownMs);
+        logServerEvent("warn", "solana.rpc.proxy_failover", {
+          rpc: redactRpcUrl(rpcUrl),
+          status: response.status,
+          attempt,
+          poolSize: orderedPool.length,
+        });
         lastStatus = response.status;
         continue;
       }
 
       const body = (await response.json()) as unknown;
+      if (hasRateLimitJsonRpcError(body) && attempt < orderedPool.length - 1) {
+        const cooldownMs = isPublicSolanaRpc(rpcUrl) ? 30_000 : 15_000;
+        markSolanaRpcRateLimited(rpcUrl, cooldownMs);
+        logServerEvent("warn", "solana.rpc.proxy_failover", {
+          rpc: redactRpcUrl(rpcUrl),
+          status: 429,
+          attempt,
+          poolSize: orderedPool.length,
+        });
+        lastStatus = 429;
+        lastBody = body;
+        continue;
+      }
+      if (
+        hasBlockhashNotFoundError(body) &&
+        attempt < orderedPool.length - 1
+      ) {
+        lastStatus = response.status;
+        lastBody = body;
+        continue;
+      }
       return { status: response.status, body };
-    } catch {
+    } catch (error: unknown) {
       markSolanaRpcRateLimited(rpcUrl, 10_000);
+      logServerEvent("warn", "solana.rpc.proxy_error", {
+        rpc: redactRpcUrl(rpcUrl),
+        message: error instanceof Error ? error.message : String(error),
+        attempt,
+        poolSize: orderedPool.length,
+      });
     }
   }
 
@@ -214,11 +400,22 @@ export async function deriveVaultAuthorityPda(): Promise<[PublicKey, number]> {
   );
 }
 
+export function toVaultMatchId(matchId: string): string {
+  const compact = matchId.trim().replace(/-/g, "");
+  if (compact.length > 0 && Buffer.byteLength(compact, "utf8") <= 32) {
+    return compact;
+  }
+  return createHash("sha256")
+    .update(matchId, "utf8")
+    .digest("hex")
+    .slice(0, 32);
+}
+
 export async function deriveBattleVaultPda(
   matchId: string
 ): Promise<[PublicKey, number]> {
   return PublicKey.findProgramAddress(
-    [Buffer.from("battle_vault"), Buffer.from(matchId, "utf8")],
+    [Buffer.from("battle_vault"), Buffer.from(toVaultMatchId(matchId), "utf8")],
     NUSA_CARD_VAULT_PROGRAM_ID
   );
 }

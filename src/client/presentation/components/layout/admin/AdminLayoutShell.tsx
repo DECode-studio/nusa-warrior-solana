@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { UserEntity } from "@/client/domain/auth/entity/user_entity";
 import { ROUTES } from "@/core/constants/routes";
 import { getService } from "@/core/di/container";
 import { AUTH_USECASE_TOKEN } from "@/core/di/tokens";
+import {
+  clearAuthRefreshCache,
+  refreshAuthSession,
+  runWithAuthMutationLock,
+} from "@/core/http-client/auth-refresh";
 import { useTranslator } from "@/core/translator";
 import { ADMIN_LAYOUT_SEMANTIC_IDS } from "./constants/SemanticIdConstant";
 import { ADMIN_LAYOUT_TEXT_CONSTANT } from "./constants/TextConstant";
@@ -16,41 +21,64 @@ import { SessionHeartbeat } from "@/client/presentation/components/SessionHeartb
 
 interface AdminLayoutShellProps {
   children: React.ReactNode;
+  initialAdminUser?: UserEntity | null;
 }
 
 export function AdminLayoutShell({
   children,
+  initialAdminUser = null,
 }: AdminLayoutShellProps): React.ReactElement {
   const pathname = usePathname() ?? "";
-  const router = useRouter();
   const { locale, t } = useTranslator();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
-  const [adminUser, setAdminUser] = useState<UserEntity | null>(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [adminUser, setAdminUser] = useState<UserEntity | null>(initialAdminUser);
+  const [checkingAuth, setCheckingAuth] = useState(!initialAdminUser);
+  const loggingOutRef = useRef(false);
 
   const isLoginRoute = pathname.endsWith("/admin/login");
 
   useEffect(() => {
+    if (initialAdminUser) {
+      setAdminUser(initialAdminUser);
+      setCheckingAuth(false);
+    }
+  }, [initialAdminUser]);
+
+  useEffect(() => {
+    if (isLoginRoute || initialAdminUser) {
+      setCheckingAuth(false);
+      return;
+    }
+
     let active = true;
     const verifyAdmin = async (): Promise<void> => {
       setCheckingAuth(true);
       try {
         const authUseCase = getService(AUTH_USECASE_TOKEN);
-        const me = await authUseCase.getCurrentUser();
+        let me = await authUseCase.getCurrentUser();
         if (!active) return;
+
+        if (!me) {
+          const refreshed = await refreshAuthSession({ force: true });
+          if (!active) return;
+          if (refreshed) {
+            me = await authUseCase.getCurrentUser();
+            if (!active) return;
+          }
+        }
 
         const isAdminOrCurator =
           me !== null && (me.role === "ADMIN" || me.role === "CURATOR");
         setAdminUser(isAdminOrCurator ? me : null);
 
-        if (!isLoginRoute && !isAdminOrCurator) {
-          router.replace(ROUTES.ADMIN_LOGIN(locale));
+        if (!isAdminOrCurator) {
+          window.location.assign(ROUTES.ADMIN_LOGIN(locale));
         }
       } catch {
         if (!active) return;
-        setAdminUser(null);
-        if (!isLoginRoute) {
-          router.replace(ROUTES.ADMIN_LOGIN(locale));
+        if (!adminUser) {
+          setAdminUser(null);
+          window.location.assign(ROUTES.ADMIN_LOGIN(locale));
         }
       } finally {
         if (active) {
@@ -62,7 +90,7 @@ export function AdminLayoutShell({
     return () => {
       active = false;
     };
-  }, [isLoginRoute, locale, pathname, router]);
+  }, [adminUser, initialAdminUser, isLoginRoute, locale]);
 
   // If currently on /admin/login, render login view without sidebar/header shell
   if (isLoginRoute) {
@@ -70,14 +98,17 @@ export function AdminLayoutShell({
   }
 
   const handleLogout = async (): Promise<void> => {
+    if (loggingOutRef.current) return;
+    loggingOutRef.current = true;
     try {
       const authUseCase = getService(AUTH_USECASE_TOKEN);
-      await authUseCase.logout();
+      await runWithAuthMutationLock(() => authUseCase.logout());
+      clearAuthRefreshCache();
     } catch {
       // Ignore logout error
     } finally {
       setAdminUser(null);
-      router.push(ROUTES.ADMIN_LOGIN(locale));
+      window.location.assign(`${ROUTES.ADMIN_LOGIN(locale)}&loggedOut=1`);
     }
   };
 

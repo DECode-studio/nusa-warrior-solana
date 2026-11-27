@@ -178,6 +178,7 @@ export function NavbarDrawerIsland({
                   <div className="mt-6 space-y-2.5 border-t border-white/10 pt-5">
                     <Link
                       href={ROUTES.USER_DASHBOARD(locale)}
+                      prefetch={false}
                       onClick={() => setOpen(false)}
                       className="flex items-center justify-center gap-2 rounded-full bg-[#6766FF] px-4 py-3 font-display text-sm font-bold tracking-wider text-white uppercase shadow-[0_8px_24px_rgba(103,102,255,0.4)] transition hover:bg-[#5856F2]"
                     >

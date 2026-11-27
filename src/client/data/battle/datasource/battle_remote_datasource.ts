@@ -7,7 +7,9 @@ import type {
 } from "@/client/domain/battle/entity/battle_entity";
 import type {
   BattleSessionApiModel,
+  ConfirmVaultLockApiModel,
   MatchLogApiModel,
+  PrepareVaultLockApiModel,
   QuickMatchQueueApiModel,
 } from "../model/battle_model";
 
@@ -74,6 +76,23 @@ export class BattleRemoteDataSource {
   public async cancelQuickMatch(): Promise<boolean> {
     const response = await apiClient.delete<{ cancelled: boolean }>(API_ROUTES.BATTLES.quickMatch);
     return response.cancelled;
+  }
+
+  public async prepareVaultLock(id: string): Promise<PrepareVaultLockApiModel> {
+    return apiClient.post<PrepareVaultLockApiModel>(
+      API_ROUTES.BATTLES.vaultPrepare(id),
+      {}
+    );
+  }
+
+  public async confirmVaultLock(
+    id: string,
+    txSignatures: string[]
+  ): Promise<ConfirmVaultLockApiModel> {
+    return apiClient.post<ConfirmVaultLockApiModel>(
+      API_ROUTES.BATTLES.vaultConfirm(id),
+      { txSignatures }
+    );
   }
 
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BattleSessionEntity, BotDifficulty, MatchLogEntity, QuickMatchQueueEntity } from "@/client/domain/battle/entity/battle_entity";
 import type { CardEntity } from "@/client/domain/card/entity/card_entity";
@@ -37,6 +37,11 @@ export function useBattleLobby() {
   const [quickMatchAgreementOpen, setQuickMatchAgreementOpen] = useState(false);
   const [activeBattleSession, setActiveBattleSession] = useState<BattleSessionEntity | null>(null);
   const [endingActiveBattle, setEndingActiveBattle] = useState(false);
+  const [joiningQuickMatch, setJoiningQuickMatch] = useState(false);
+  const [cancellingQuickMatch, setCancellingQuickMatch] = useState(false);
+  const joiningQuickMatchRef = useRef(false);
+  const cancellingQuickMatchRef = useRef(false);
+  const pollingQuickMatchRef = useRef(false);
 
   const loadLobbyData = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -85,9 +90,12 @@ export function useBattleLobby() {
     return () => { cancelled = true; };
   }, [locale, router]);
 
+  const quickMatchStatus = quickMatchQueue?.status;
   useEffect(() => {
-    if (quickMatchQueue?.status !== "WAITING") return;
+    if (quickMatchStatus !== "WAITING") return;
     const interval = window.setInterval(() => {
+      if (pollingQuickMatchRef.current) return;
+      pollingQuickMatchRef.current = true;
       void getService(BATTLE_USECASE_TOKEN).searchQuickMatch().then((queue) => {
         if (!queue) { setQuickMatchQueue(null); return; }
         setQuickMatchQueue(queue);
@@ -95,10 +103,14 @@ export function useBattleLobby() {
           saveSessionId(queue.session.id);
           router.push(ROUTES.USER_BATTLE_ARENA(locale));
         }
-      }).catch(() => setQuickMatchError(BATTLE_TEXT_CONSTANT.START_MATCH_SERVER_ERROR));
+      }).catch(() => {
+        setQuickMatchError(t(BATTLE_TEXT_CONSTANT.START_MATCH_SERVER_ERROR));
+      }).finally(() => {
+        pollingQuickMatchRef.current = false;
+      });
     }, 2_000);
     return () => window.clearInterval(interval);
-  }, [locale, quickMatchQueue, router]);
+  }, [locale, quickMatchStatus, router, t]);
 
   const activeLobbyDeck = useMemo(
     () => decks.find((deck) => deck.id === selectedDeckId) ?? decks[0] ?? null,
@@ -144,7 +156,13 @@ export function useBattleLobby() {
     }
   };
   const startQuickMatch = async (): Promise<void> => {
-    if (!selectedDeckId) throw new Error(BATTLE_TEXT_CONSTANT.DECK_REQUIRED);
+    if (!selectedDeckId) {
+      setQuickMatchError(t(BATTLE_TEXT_CONSTANT.DECK_REQUIRED));
+      return;
+    }
+    if (joiningQuickMatchRef.current) return;
+    joiningQuickMatchRef.current = true;
+    setJoiningQuickMatch(true);
     setQuickMatchError(null);
     setActiveBattleSession(null);
     try {
@@ -154,17 +172,40 @@ export function useBattleLobby() {
         acceptCardStake: true,
       });
       setQuickMatchQueue(queue);
+      setQuickMatchAgreementOpen(false);
       if (queue.status === "MATCHED" && queue.session) {
         saveSessionId(queue.session.id);
         router.push(ROUTES.USER_BATTLE_ARENA(locale));
       }
     } catch (cause) {
-      setQuickMatchError(cause instanceof ApiClientError ? cause.message : t(BATTLE_TEXT_CONSTANT.START_MATCH_SERVER_ERROR));
+      const fallbackMessage = cause instanceof ApiClientError
+        ? cause.message
+        : t(BATTLE_TEXT_CONSTANT.START_MATCH_SERVER_ERROR);
       if (cause instanceof ApiClientError && cause.status === 409) {
         const activeSession = await getService(BATTLE_USECASE_TOKEN).getActiveSession().catch(() => null);
-        if (activeSession?.status === "ACTIVE") setActiveBattleSession(activeSession);
+        if (activeSession?.status === "ACTIVE") {
+          setActiveBattleSession(activeSession);
+          setQuickMatchError(fallbackMessage);
+          return;
+        }
+        const existingQueue = await getService(BATTLE_USECASE_TOKEN).getQuickMatchStatus().catch(() => null);
+        if (existingQueue?.status === "WAITING") {
+          setQuickMatchQueue(existingQueue);
+          setQuickMatchError(null);
+          setQuickMatchAgreementOpen(false);
+          return;
+        }
+        if (existingQueue?.status === "MATCHED" && existingQueue.session) {
+          saveSessionId(existingQueue.session.id);
+          setQuickMatchAgreementOpen(false);
+          router.push(ROUTES.USER_BATTLE_ARENA(locale));
+          return;
+        }
       }
-      throw cause;
+      setQuickMatchError(fallbackMessage);
+    } finally {
+      joiningQuickMatchRef.current = false;
+      setJoiningQuickMatch(false);
     }
   };
 
@@ -200,19 +241,27 @@ export function useBattleLobby() {
     }
   };
   const cancelQuickMatch = async (): Promise<boolean> => {
-    const battle = getService(BATTLE_USECASE_TOKEN);
-    const cancelled = await battle.cancelQuickMatch();
-    if (!cancelled) {
-      const queue = await battle.getQuickMatchStatus();
-      if (queue?.status === "MATCHED" && queue.session) {
-        saveSessionId(queue.session.id);
-        router.push(ROUTES.USER_BATTLE_ARENA(locale));
-        return false;
+    if (cancellingQuickMatchRef.current) return false;
+    cancellingQuickMatchRef.current = true;
+    setCancellingQuickMatch(true);
+    try {
+      const battle = getService(BATTLE_USECASE_TOKEN);
+      const cancelled = await battle.cancelQuickMatch();
+      if (!cancelled) {
+        const queue = await battle.getQuickMatchStatus();
+        if (queue?.status === "MATCHED" && queue.session) {
+          saveSessionId(queue.session.id);
+          router.push(ROUTES.USER_BATTLE_ARENA(locale));
+          return false;
+        }
       }
+      setQuickMatchQueue(null);
+      setQuickMatchError(null);
+      return cancelled;
+    } finally {
+      cancellingQuickMatchRef.current = false;
+      setCancellingQuickMatch(false);
     }
-    setQuickMatchQueue(null);
-    setQuickMatchError(null);
-    return cancelled;
   };
 
   const browsePublicLeagues = async (): Promise<void> => {
@@ -235,6 +284,7 @@ export function useBattleLobby() {
     previewDeckCards, activeLobbyDeck, matchHistory, loading, error,
     hasSavedBattleSession, enterArena, retry: loadLobbyData,
     quickMatchQueue, quickMatchError, quickMatchAgreementOpen,
+    joiningQuickMatch, cancellingQuickMatch,
     activeBattleSession, endingActiveBattle, continueActiveBattle, surrenderActiveBattle,
     setQuickMatchAgreementOpen, startQuickMatch, cancelQuickMatch,
     browsePublicLeagues,

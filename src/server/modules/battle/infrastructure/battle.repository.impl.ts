@@ -12,6 +12,11 @@ import { isPrismaDriverEnabled, prisma } from "@/server/shared/db/prisma";
 import { AppError } from "@/server/shared/errors/app-error";
 import { logServerEvent } from "@/server/shared/logging/server-logger";
 import { getJakartaDayStart, grantNusaPointsPrisma, NUSA_POINT_POLICY } from "@/server/modules/nusa-points/domain/nusa-point-policy";
+import {
+  extractVaultEventsState,
+  pickRandomLockedRewardCard,
+  settleCompletedBattleVaultOnChain,
+} from "@/server/modules/solana/battle-vault-orchestrator.service";
 import type {
   BattleRepository,
   CreateMatchLogInput,
@@ -113,7 +118,20 @@ export class BattleRepositoryImpl implements BattleRepository {
           const existing = await tx.quickMatchQueueEntry.findUnique({ where: { userId: input.userId } });
           if (existing?.status === "WAITING") {
             if (existing.idempotencyKey !== input.enqueue.idempotencyKey) {
-              throw AppError.conflict("Anda sudah berada dalam antrean quick match.");
+              await tx.quickMatchQueueEntry.update({
+                where: { userId: input.userId },
+                data: {
+                  deckId: input.enqueue.deckId,
+                  deckName: input.enqueue.deckName,
+                  battlePower: input.enqueue.battlePower,
+                  characterSlugsJson: JSON.stringify(input.enqueue.characterSlugs),
+                  instrumentSlugsJson: JSON.stringify(input.enqueue.instrumentSlugs),
+                  idempotencyKey: input.enqueue.idempotencyKey,
+                  acceptedAt: input.enqueue.acceptedAt,
+                  createdAt: existing.deckId === input.enqueue.deckId ? existing.createdAt : now,
+                  updatedAt: now,
+                },
+              });
             }
           } else if (existing?.idempotencyKey === input.enqueue.idempotencyKey) {
             return { queue: toQueueRecord(existing), session: null };
@@ -254,7 +272,19 @@ export class BattleRepositoryImpl implements BattleRepository {
       if (active) throw AppError.conflict("Anda masih memiliki pertandingan aktif.");
       const existing = store.quickMatchQueue.find((entry) => entry.userId === input.userId);
       if (existing?.status === "WAITING") {
-        if (existing.idempotencyKey !== input.enqueue.idempotencyKey) throw AppError.conflict("Anda sudah berada dalam antrean quick match.");
+        if (existing.idempotencyKey !== input.enqueue.idempotencyKey) {
+          const sameDeck = existing.deckId === input.enqueue.deckId;
+          existing.deckId = input.enqueue.deckId;
+          existing.deckName = input.enqueue.deckName;
+          existing.battlePower = input.enqueue.battlePower;
+          existing.characterSlugsJson = JSON.stringify(input.enqueue.characterSlugs);
+          existing.instrumentSlugsJson = JSON.stringify(input.enqueue.instrumentSlugs);
+          existing.idempotencyKey = input.enqueue.idempotencyKey;
+          existing.acceptedAt = input.enqueue.acceptedAt.toISOString();
+          existing.createdAt = sameDeck ? existing.createdAt : now.toISOString();
+          existing.updatedAt = now.toISOString();
+          persistEmbeddedStore(store);
+        }
       } else if (existing?.idempotencyKey !== input.enqueue.idempotencyKey) {
         const queued: StoredQuickMatchQueueRecord = {
           ...input.enqueue,
@@ -538,7 +568,14 @@ export class BattleRepositoryImpl implements BattleRepository {
         completionStage = "updating_session";
         const participant = await tx.battleSession.findUnique({
           where: { id: input.id },
-          select: { userId: true, opponentUserId: true },
+          select: {
+            userId: true,
+            opponentUserId: true,
+            eventsJson: true,
+            vaultPda: true,
+            playerLockTxSignature: true,
+            opponentLockTxSignature: true,
+          },
         });
         const actorIsOpponent = participant?.opponentUserId === input.userId;
         const changed = await tx.battleSession.updateMany({
@@ -573,87 +610,169 @@ export class BattleRepositoryImpl implements BattleRepository {
             const winnerUserId = playerWon ? playerUserId : pvp.opponentUserId;
             const loserUserId = playerWon ? pvp.opponentUserId : playerUserId;
             const losingDeckSlugs = playerWon ? pvp.opponentDeckCardSlugs : pvp.playerDeckCardSlugs;
-            completionStage = "selecting_transfer_card";
-            const transferableCardTypes = await tx.card.findMany({
-              where: {
-                slug: { in: losingDeckSlugs },
-                publicationStatus: "ACTIVE",
-                owners: { some: { userId: loserUserId, quantity: { gt: 0 } } },
-              },
-              select: { id: true, slug: true, cardType: true },
-            });
-            const deckCopyCountBySlug = new Map<string, number>();
-            for (const slug of losingDeckSlugs) {
-              deckCopyCountBySlug.set(slug, (deckCopyCountBySlug.get(slug) ?? 0) + 1);
-            }
-            const transferableCards = transferableCardTypes.flatMap((card) =>
-              Array.from({ length: deckCopyCountBySlug.get(card.slug) ?? 0 }, () => card)
+            const vaultLocked = Boolean(
+              participant?.vaultPda &&
+                participant.playerLockTxSignature &&
+                participant.opponentLockTxSignature
             );
             let rewardCardSlug: string | null = null;
-            completionAuditState.current = {
-              winnerUserId,
-              loserUserId,
-              winnerSide: completion.winner,
-              rewardCardSlug: null,
-              eligibleCardCount: transferableCards.length,
-              transferStatus: "NO_ELIGIBLE_CARD",
-              ledgerTransactionId: null,
-            };
-            if (transferableCards.length > 0) {
-              const card = transferableCards[randomInt(transferableCards.length)];
-              rewardCardSlug = card.slug;
-              completionAuditState.current = {
-                ...completionAuditState.current!,
-                rewardCardSlug,
-                transferStatus: "PENDING",
-              };
-              completionStage = "debiting_loser_card";
-              const debit = await tx.$queryRaw<Array<{ cardId: string }>>(Prisma.sql`
-                UPDATE "user_cards"
-                SET "quantity" = "quantity" - 1, "updatedAt" = clock_timestamp()
-                WHERE "userId" = ${loserUserId} AND "cardId" = ${card.id} AND "quantity" >= 1
-                RETURNING "cardId"
-              `);
-              if (debit.length !== 1) throw AppError.conflict("Kartu hadiah sudah tidak dimiliki pemain yang kalah.");
-              const transactionId = randomUUID();
-              completionStage = "creating_transfer_ledger";
-              await tx.cardLedgerTransaction.create({
-                data: {
-                  id: transactionId,
-                  idempotencyKey: `pvp-card-transfer:${input.id}`,
-                  type: "PVP_CARD_TRANSFER",
-                  referenceId: input.id,
-                  actorUserId: winnerUserId,
-                },
-              });
-              completionStage = "crediting_winner_card";
-              await tx.$executeRaw(Prisma.sql`
-                INSERT INTO "user_cards" (
-                  "id", "userId", "cardId", "quantity", "source", "createdAt", "updatedAt"
-                ) VALUES (${randomUUID()}, ${winnerUserId}, ${card.id}, 1, 'PVP_CARD_TRANSFER', clock_timestamp(), clock_timestamp())
-                ON CONFLICT ("userId", "cardId") DO UPDATE SET
-                  "quantity" = "user_cards"."quantity" + 1,
-                  "source" = 'PVP_CARD_TRANSFER',
-                  "updatedAt" = clock_timestamp()
-              `);
-              completionStage = "writing_transfer_entries";
-              await tx.cardLedgerEntry.createMany({
-                data: [
-                  { id: randomUUID(), transactionId, cardId: card.id, accountType: "USER", accountId: loserUserId, quantity: -1 },
-                  { id: randomUUID(), transactionId, cardId: card.id, accountType: "USER", accountId: winnerUserId, quantity: 1 },
-                ],
-              });
+            if (vaultLocked && participant) {
+              const vaultEvents = extractVaultEventsState(participant.eventsJson);
+              const loserSide = playerWon ? "OPPONENT" : "PLAYER";
+              const loserLockedCards = vaultEvents.lockedBySide[loserSide] ?? [];
+              const rewardManifest = pickRandomLockedRewardCard(loserLockedCards);
+              const eligibleLockedCount = loserLockedCards.reduce(
+                (sum, item) => sum + item.quantity,
+                0
+              );
               completionAuditState.current = {
                 winnerUserId,
                 loserUserId,
                 winnerSide: completion.winner,
-                rewardCardSlug,
-                eligibleCardCount: transferableCards.length,
-                transferStatus: "TRANSFERRED",
-                ledgerTransactionId: transactionId,
+                rewardCardSlug: rewardManifest?.cardSlug ?? null,
+                eligibleCardCount: eligibleLockedCount,
+                transferStatus: rewardManifest ? "PENDING" : "NO_ELIGIBLE_CARD",
+                ledgerTransactionId: null,
               };
-              completionStage = "saving_reward_on_session";
-              await tx.battleSession.update({ where: { id: input.id }, data: { rewardCardSlug: card.slug } });
+              if (rewardManifest) {
+                rewardCardSlug = rewardManifest.cardSlug;
+                completionStage = "saving_reward_on_session";
+                await tx.battleSession.update({
+                  where: { id: input.id },
+                  data: { rewardCardSlug },
+                });
+                const card = await tx.card.findUnique({
+                  where: { slug: rewardManifest.cardSlug },
+                  select: { id: true, slug: true },
+                });
+                let ledgerTransactionId: string | null = null;
+                if (card) {
+                  const debit = await tx.$queryRaw<Array<{ cardId: string }>>(Prisma.sql`
+                    UPDATE "user_cards"
+                    SET "quantity" = "quantity" - 1, "updatedAt" = clock_timestamp()
+                    WHERE "userId" = ${loserUserId} AND "cardId" = ${card.id} AND "quantity" >= 1
+                    RETURNING "cardId"
+                  `);
+                  if (debit.length === 1) {
+                    ledgerTransactionId = randomUUID();
+                    await tx.cardLedgerTransaction.create({
+                      data: {
+                        id: ledgerTransactionId,
+                        idempotencyKey: `pvp-card-transfer:${input.id}`,
+                        type: "PVP_CARD_TRANSFER",
+                        referenceId: input.id,
+                        actorUserId: winnerUserId,
+                      },
+                    });
+                    await tx.$executeRaw(Prisma.sql`
+                      INSERT INTO "user_cards" (
+                        "id", "userId", "cardId", "quantity", "source", "createdAt", "updatedAt"
+                      ) VALUES (${randomUUID()}, ${winnerUserId}, ${card.id}, 1, 'PVP_CARD_TRANSFER', clock_timestamp(), clock_timestamp())
+                      ON CONFLICT ("userId", "cardId") DO UPDATE SET
+                        "quantity" = "user_cards"."quantity" + 1,
+                        "source" = 'PVP_CARD_TRANSFER',
+                        "updatedAt" = clock_timestamp()
+                    `);
+                    await tx.cardLedgerEntry.createMany({
+                      data: [
+                        { id: randomUUID(), transactionId: ledgerTransactionId, cardId: card.id, accountType: "USER", accountId: loserUserId, quantity: -1 },
+                        { id: randomUUID(), transactionId: ledgerTransactionId, cardId: card.id, accountType: "USER", accountId: winnerUserId, quantity: 1 },
+                      ],
+                    });
+                  }
+                }
+                completionAuditState.current = {
+                  winnerUserId,
+                  loserUserId,
+                  winnerSide: completion.winner,
+                  rewardCardSlug,
+                  eligibleCardCount: eligibleLockedCount,
+                  transferStatus: "TRANSFERRED",
+                  ledgerTransactionId,
+                };
+              }
+            } else {
+              completionStage = "selecting_transfer_card";
+              const transferableCardTypes = await tx.card.findMany({
+                where: {
+                  slug: { in: losingDeckSlugs },
+                  publicationStatus: "ACTIVE",
+                  owners: { some: { userId: loserUserId, quantity: { gt: 0 } } },
+                },
+                select: { id: true, slug: true, cardType: true },
+              });
+              const deckCopyCountBySlug = new Map<string, number>();
+              for (const slug of losingDeckSlugs) {
+                deckCopyCountBySlug.set(slug, (deckCopyCountBySlug.get(slug) ?? 0) + 1);
+              }
+              const transferableCards = transferableCardTypes.flatMap((card) =>
+                Array.from({ length: deckCopyCountBySlug.get(card.slug) ?? 0 }, () => card)
+              );
+              completionAuditState.current = {
+                winnerUserId,
+                loserUserId,
+                winnerSide: completion.winner,
+                rewardCardSlug: null,
+                eligibleCardCount: transferableCards.length,
+                transferStatus: "NO_ELIGIBLE_CARD",
+                ledgerTransactionId: null,
+              };
+              if (transferableCards.length > 0) {
+                const card = transferableCards[randomInt(transferableCards.length)];
+                rewardCardSlug = card.slug;
+                completionAuditState.current = {
+                  ...completionAuditState.current!,
+                  rewardCardSlug,
+                  transferStatus: "PENDING",
+                };
+                completionStage = "debiting_loser_card";
+                const debit = await tx.$queryRaw<Array<{ cardId: string }>>(Prisma.sql`
+                  UPDATE "user_cards"
+                  SET "quantity" = "quantity" - 1, "updatedAt" = clock_timestamp()
+                  WHERE "userId" = ${loserUserId} AND "cardId" = ${card.id} AND "quantity" >= 1
+                  RETURNING "cardId"
+                `);
+                if (debit.length !== 1) throw AppError.conflict("Kartu hadiah sudah tidak dimiliki pemain yang kalah.");
+                const transactionId = randomUUID();
+                completionStage = "creating_transfer_ledger";
+                await tx.cardLedgerTransaction.create({
+                  data: {
+                    id: transactionId,
+                    idempotencyKey: `pvp-card-transfer:${input.id}`,
+                    type: "PVP_CARD_TRANSFER",
+                    referenceId: input.id,
+                    actorUserId: winnerUserId,
+                  },
+                });
+                completionStage = "crediting_winner_card";
+                await tx.$executeRaw(Prisma.sql`
+                  INSERT INTO "user_cards" (
+                    "id", "userId", "cardId", "quantity", "source", "createdAt", "updatedAt"
+                  ) VALUES (${randomUUID()}, ${winnerUserId}, ${card.id}, 1, 'PVP_CARD_TRANSFER', clock_timestamp(), clock_timestamp())
+                  ON CONFLICT ("userId", "cardId") DO UPDATE SET
+                    "quantity" = "user_cards"."quantity" + 1,
+                    "source" = 'PVP_CARD_TRANSFER',
+                    "updatedAt" = clock_timestamp()
+                `);
+                completionStage = "writing_transfer_entries";
+                await tx.cardLedgerEntry.createMany({
+                  data: [
+                    { id: randomUUID(), transactionId, cardId: card.id, accountType: "USER", accountId: loserUserId, quantity: -1 },
+                    { id: randomUUID(), transactionId, cardId: card.id, accountType: "USER", accountId: winnerUserId, quantity: 1 },
+                  ],
+                });
+                completionAuditState.current = {
+                  winnerUserId,
+                  loserUserId,
+                  winnerSide: completion.winner,
+                  rewardCardSlug,
+                  eligibleCardCount: transferableCards.length,
+                  transferStatus: "TRANSFERRED",
+                  ledgerTransactionId: transactionId,
+                };
+                completionStage = "saving_reward_on_session";
+                await tx.battleSession.update({ where: { id: input.id }, data: { rewardCardSlug: card.slug } });
+              }
             }
             completionStage = "writing_match_history";
             await tx.match.createMany({
@@ -928,6 +1047,61 @@ export class BattleRepositoryImpl implements BattleRepository {
     return updated;
   }
 
+  public async cancelPreLockBattleSession(input: {
+    id: string;
+    userId: string;
+    expectedSequence: number;
+    eventsJson: string;
+  }): Promise<StoredBattleSessionRecord | null> {
+    const now = new Date();
+    if (isPrismaDriverEnabled()) {
+      const changed = await prisma.battleSession.updateMany({
+        where: {
+          id: input.id,
+          OR: [{ userId: input.userId }, { opponentUserId: input.userId }],
+          sequence: input.expectedSequence,
+          status: "ACTIVE",
+        },
+        data: {
+          sequence: { increment: 1 },
+          eventsJson: input.eventsJson,
+          status: "ABANDONED",
+          turnDeadlineAt: null,
+          updatedAt: now,
+        },
+      });
+      if (changed.count !== 1) return null;
+      const row = await prisma.battleSession.findFirst({
+        where: {
+          id: input.id,
+          OR: [{ userId: input.userId }, { opponentUserId: input.userId }],
+        },
+      });
+      return row ? toStoredSession(row) : null;
+    }
+
+    const store = getEmbeddedStore();
+    const index = store.battleSessions.findIndex(
+      (row) =>
+        row.id === input.id &&
+        (row.userId === input.userId || row.opponentUserId === input.userId) &&
+        row.sequence === input.expectedSequence &&
+        row.status === "ACTIVE"
+    );
+    if (index < 0) return null;
+    const updated: StoredBattleSessionRecord = {
+      ...store.battleSessions[index],
+      sequence: input.expectedSequence + 1,
+      eventsJson: input.eventsJson,
+      status: "ABANDONED",
+      turnDeadlineAt: null,
+      updatedAt: now.toISOString(),
+    };
+    store.battleSessions[index] = updated;
+    persistEmbeddedStore(store);
+    return updated;
+  }
+
   public async reconnectBattleSession(
     id: string,
     userId: string,
@@ -1168,6 +1342,41 @@ export class BattleRepositoryImpl implements BattleRepository {
               updatedAt: now,
             },
           });
+          if (session.vaultPda) {
+            await settleCompletedBattleVaultOnChain({ matchId: session.id });
+          }
+        } else {
+          session.sequence += 1;
+          session.eventsJson = appendAuditEvent(session.eventsJson, event);
+          session.status = "ABANDONED";
+          session.turnDeadlineAt = null;
+          session.updatedAt = now.toISOString();
+        }
+        completed += 1;
+        continue;
+      }
+      if (
+        session.vaultPda &&
+        (!session.playerLockTxSignature || !session.opponentLockTxSignature)
+      ) {
+        const event = {
+          type: "PRE_LOCK_TIMEOUT",
+          auditSequence: (JSON.parse(session.eventsJson || "[]") as unknown[]).length,
+          cause: expiredTurn ? "TURN_DEADLINE_EXPIRED" : "RECONNECT_GRACE_EXPIRED",
+          at: now.toISOString(),
+        };
+        if (isPrismaDriverEnabled()) {
+          await prisma.battleSession.updateMany({
+            where: { id: session.id, sequence: session.sequence, status: "ACTIVE" },
+            data: {
+              sequence: { increment: 1 },
+              eventsJson: appendAuditEvent(session.eventsJson, event),
+              status: "ABANDONED",
+              turnDeadlineAt: null,
+              updatedAt: now,
+            },
+          });
+          await settleCompletedBattleVaultOnChain({ matchId: session.id });
         } else {
           session.sequence += 1;
           session.eventsJson = appendAuditEvent(session.eventsJson, event);
@@ -1219,7 +1428,12 @@ export class BattleRepositoryImpl implements BattleRepository {
         rngDrawsJson: session.rngDrawsJson,
         completion,
       });
-      if (saved) completed += 1;
+      if (saved) {
+        if (isPrismaDriverEnabled() && saved.vaultPda && !saved.settleTxSignature) {
+          await settleCompletedBattleVaultOnChain({ matchId: saved.id });
+        }
+        completed += 1;
+      }
     }
     if (!isPrismaDriverEnabled()) persistEmbeddedStore(getEmbeddedStore());
     return completed;

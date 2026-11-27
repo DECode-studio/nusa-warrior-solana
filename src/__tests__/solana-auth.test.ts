@@ -13,6 +13,10 @@ import {
   verifySolanaLoginUseCase,
 } from "@/server/modules/auth/application/auth.usecase";
 import { authRepository } from "@/server/modules/auth/infrastructure/auth.repository.impl";
+import {
+  createAuthSession,
+  rotateAuthSession,
+} from "@/server/shared/auth/auth-session-store";
 
 describe("Solana Wallet Authentication", () => {
   it("creates a Devnet challenge message and verifies a new wallet as NEEDS_NICKNAME", async () => {
@@ -115,5 +119,26 @@ describe("Solana Wallet Authentication", () => {
         signature: wrongSignature,
       })
     ).rejects.toThrow("Verifikasi signature dompet Solana gagal.");
+  });
+
+  it("handles concurrent rotateAuthSession calls with the same token without 401 race failure", async () => {
+    const keypair = await Keypair.generate();
+    const walletAddress = keypair.publicKey.toBase58();
+    const created = await createAuthSession({
+      userId: `usr-concurrent-${Date.now()}`,
+      walletAddress,
+      name: "ConcurrentTester",
+      role: "PLAYER",
+    });
+
+    const [first, second] = await Promise.all([
+      rotateAuthSession(created.refreshToken),
+      rotateAuthSession(created.refreshToken),
+    ]);
+
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(first?.refreshToken).toBe(second?.refreshToken);
+    expect(first?.refreshToken).not.toBe(created.refreshToken);
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Flag } from "lucide-react";
+import { Flag, Loader2 } from "lucide-react";
 import { useTranslator } from "@/core/translator";
 import { BaseModal, Button } from "@/client/presentation/components/ui";
 import { BATTLE_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
@@ -9,12 +9,14 @@ import { BATTLE_TEXT_CONSTANT } from "../constants/TextConstant";
 
 export interface BattleSurrenderModalProps {
   readonly isOpen: boolean;
+  readonly isSubmitting?: boolean;
   readonly onCancel: () => void;
   readonly onConfirm: () => void;
 }
 
 export function BattleSurrenderModal({
   isOpen,
+  isSubmitting = false,
   onCancel,
   onConfirm,
 }: BattleSurrenderModalProps): React.ReactElement | null {
@@ -24,7 +26,8 @@ export function BattleSurrenderModal({
     <BaseModal
       id={BATTLE_SEMANTIC_IDS.SURRENDER_MODAL}
       isOpen={isOpen}
-      onClose={onCancel}
+      onClose={isSubmitting ? () => {} : onCancel}
+      closeOnBackdropClick={!isSubmitting}
       size="sm"
       className="border-danger/30 bg-surface-elevated"
       showCloseButton={false}
@@ -41,11 +44,28 @@ export function BattleSurrenderModal({
         </p>
 
         <div className="flex items-center justify-center gap-3 pt-2">
-          <Button onClick={onCancel} variant="secondary" size="sm">
+          <Button
+            onClick={onCancel}
+            variant="secondary"
+            size="sm"
+            disabled={isSubmitting}
+          >
             {t(BATTLE_TEXT_CONSTANT.SURRENDER_CANCEL)}
           </Button>
-          <Button onClick={onConfirm} variant="danger" size="sm">
-            {t(BATTLE_TEXT_CONSTANT.SURRENDER_YES)}
+          <Button
+            onClick={onConfirm}
+            variant="danger"
+            size="sm"
+            disabled={isSubmitting}
+            leftIcon={
+              isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : undefined
+            }
+          >
+            {isSubmitting
+              ? t(BATTLE_TEXT_CONSTANT.SURRENDER_PROCESSING)
+              : t(BATTLE_TEXT_CONSTANT.SURRENDER_YES)}
           </Button>
         </div>
       </div>

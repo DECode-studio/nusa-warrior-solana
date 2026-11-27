@@ -78,6 +78,17 @@ export async function enforceRateLimit(
   }
 }
 
+export async function resetDistributedRateLimit(rawKey: string): Promise<void> {
+  const key = createHash("sha256").update(rawKey, "utf8").digest("hex");
+  if (!isPrismaDriverEnabled()) {
+    globalRateLimitStore.__nusantaraLocalRateLimitBuckets?.delete(key);
+    return;
+  }
+  await prisma.apiRateLimitBucket.deleteMany({
+    where: { key },
+  });
+}
+
 export async function pruneExpiredRateLimitBuckets(now = new Date()): Promise<number> {
   if (!isPrismaDriverEnabled()) return 0;
   const result = await prisma.apiRateLimitBucket.deleteMany({

@@ -37,11 +37,10 @@ export function BattleLobbyView(): React.ReactElement {
         error={lobby.quickMatchError}
         activeBattle={lobby.activeBattleSession}
         endingActiveBattle={lobby.endingActiveBattle}
-        onAgree={() => {
-          lobby.setQuickMatchAgreementOpen(false);
-          void lobby.startQuickMatch().catch(() => lobby.setQuickMatchAgreementOpen(true));
-        }}
-        onDecline={() => lobby.setQuickMatchAgreementOpen(false)}
+        joiningQuickMatch={lobby.joiningQuickMatch}
+        cancellingQuickMatch={lobby.cancellingQuickMatch}
+        onAgree={() => { void lobby.startQuickMatch(); }}
+        onDecline={() => { if (!lobby.joiningQuickMatch) lobby.setQuickMatchAgreementOpen(false); }}
         onCancelSearch={() => void lobby.cancelQuickMatch()}
         onPlayBot={() => {
           void lobby.cancelQuickMatch().then((cancelled) => {

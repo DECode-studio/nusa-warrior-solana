@@ -28,6 +28,8 @@ export async function POST(request: Request): Promise<Response> {
     });
     const tokens = await rotateRefreshToken(refreshToken);
     if (!tokens) {
+      cookieStore.delete(SESSION_COOKIE_NAME);
+      cookieStore.delete(REFRESH_COOKIE_NAME);
       return new Response(null, { status: 401, headers: { "Cache-Control": "no-store" } });
     }
     cookieStore.set(SESSION_COOKIE_NAME, tokens.accessToken, {

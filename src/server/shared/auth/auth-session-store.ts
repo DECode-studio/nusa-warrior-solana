@@ -5,6 +5,7 @@ import type { SessionPayload, UserRoleValue } from "./session";
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const ROTATION_GRACE_MS = 5_000;
 
 export interface StoredAuthSession extends SessionPayload {
   id: string;
@@ -14,16 +15,36 @@ export interface StoredAuthSession extends SessionPayload {
   revokedAt: Date | null;
 }
 
+export interface RotatedAuthSessionResult {
+  session: StoredAuthSession;
+  refreshToken: string;
+}
+
+interface RecentRotationEntry {
+  result: RotatedAuthSessionResult;
+  expiresAt: number;
+}
+
 const memoryStore = globalThis as typeof globalThis & {
   __nusantaraAuthSessions?: Map<string, StoredAuthSession>;
+  __nusantaraAuthRotationInFlight?: Map<string, Promise<RotatedAuthSessionResult | null>>;
+  __nusantaraAuthRecentRotations?: Map<string, RecentRotationEntry>;
 };
 
 function sessions(): Map<string, StoredAuthSession> {
   return (memoryStore.__nusantaraAuthSessions ??= new Map());
 }
 
+function inFlightRotations(): Map<string, Promise<RotatedAuthSessionResult | null>> {
+  return (memoryStore.__nusantaraAuthRotationInFlight ??= new Map());
+}
+
+function recentRotations(): Map<string, RecentRotationEntry> {
+  return (memoryStore.__nusantaraAuthRecentRotations ??= new Map());
+}
+
 function usePersistentSessionStore(): boolean {
-  return process.env.NODE_ENV === "production" && isPrismaDriverEnabled();
+  return isPrismaDriverEnabled();
 }
 
 function hashToken(secret: string): string {
@@ -99,43 +120,86 @@ export async function getActiveAuthSession(
 
 export async function rotateAuthSession(
   token: string
-): Promise<{ session: StoredAuthSession; refreshToken: string } | null> {
+): Promise<RotatedAuthSessionResult | null> {
   const parsed = parseRefreshToken(token);
   if (!parsed) return null;
-  const session = await getActiveAuthSession(parsed.id);
-  if (!session || session.refreshTokenHash !== hashToken(parsed.secret)) {
-    return null;
+
+  const inFlight = inFlightRotations();
+  while (inFlight.has(parsed.id)) {
+    await inFlight.get(parsed.id);
   }
 
-  const refresh = newRefreshToken(session.id);
-  const expiresAt = new Date(Math.min(
-    Date.now() + REFRESH_TTL_MS,
-    session.createdAt.getTime() + MAX_SESSION_TTL_MS
-  ));
-  if (expiresAt.getTime() <= Date.now()) return null;
-  if (usePersistentSessionStore()) {
-    const result = await prisma.authSession.updateMany({
-      where: {
-        id: session.id,
-        refreshTokenHash: session.refreshTokenHash,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      data: { refreshTokenHash: refresh.hash, expiresAt },
-    });
-    if (result.count !== 1) return null;
-  } else {
-    const current = sessions().get(session.id);
-    if (!current || current.refreshTokenHash !== session.refreshTokenHash || current.revokedAt) {
+  const presentedHash = hashToken(parsed.secret);
+  const cacheKey = `${parsed.id}:${presentedHash}`;
+  const recent = recentRotations();
+  const now = Date.now();
+  for (const [key, entry] of recent) {
+    if (entry.expiresAt <= now) {
+      recent.delete(key);
+    }
+  }
+  const cached = recent.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
+
+  const rotationPromise = (async (): Promise<RotatedAuthSessionResult | null> => {
+    const session = await getActiveAuthSession(parsed.id);
+    if (!session || session.refreshTokenHash !== presentedHash) {
       return null;
     }
-    sessions().set(session.id, { ...current, refreshTokenHash: refresh.hash, expiresAt });
-  }
 
-  return {
-    session: { ...session, refreshTokenHash: refresh.hash, expiresAt },
-    refreshToken: refresh.token,
-  };
+    const refresh = newRefreshToken(session.id);
+    const expiresAt = new Date(
+      Math.min(
+        Date.now() + REFRESH_TTL_MS,
+        session.createdAt.getTime() + MAX_SESSION_TTL_MS
+      )
+    );
+    if (expiresAt.getTime() <= Date.now()) return null;
+
+    if (usePersistentSessionStore()) {
+      const result = await prisma.authSession.updateMany({
+        where: {
+          id: session.id,
+          refreshTokenHash: session.refreshTokenHash,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { refreshTokenHash: refresh.hash, expiresAt },
+      });
+      if (result.count !== 1) return null;
+    } else {
+      const current = sessions().get(session.id);
+      if (
+        !current ||
+        current.refreshTokenHash !== session.refreshTokenHash ||
+        current.revokedAt
+      ) {
+        return null;
+      }
+      sessions().set(session.id, {
+        ...current,
+        refreshTokenHash: refresh.hash,
+        expiresAt,
+      });
+    }
+
+    const rotated: RotatedAuthSessionResult = {
+      session: { ...session, refreshTokenHash: refresh.hash, expiresAt },
+      refreshToken: refresh.token,
+    };
+    recent.set(cacheKey, {
+      result: rotated,
+      expiresAt: Date.now() + ROTATION_GRACE_MS,
+    });
+    return rotated;
+  })().finally(() => {
+    inFlight.delete(parsed.id);
+  });
+
+  inFlight.set(parsed.id, rotationPromise);
+  return rotationPromise;
 }
 
 export async function revokeAuthSession(id: string): Promise<void> {

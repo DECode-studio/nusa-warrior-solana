@@ -9,6 +9,7 @@ import {
 import { isPrismaDriverEnabled, prisma } from "@/server/shared/db/prisma";
 import { cardRepository } from "@/server/modules/card/infrastructure/card.repository.impl";
 import { getVerifiedWalletCards } from "@/server/modules/solana/wallet-asset-reader.service";
+import { reconcileUnsettledUserBattleVaults } from "@/server/modules/solana/battle-vault-orchestrator.service";
 
 export interface OwnedCardDto {
   card: Awaited<ReturnType<typeof cardRepository.findMany>>[number];
@@ -37,10 +38,11 @@ export async function listOwnedCards(
       cards.some((card) => Boolean(card.mintAddress));
 
     if (user?.walletAddress && hasOnChainRegistry) {
+      const reconciledCount = await reconcileUnsettledUserBattleVaults(userId);
       const verified = await getVerifiedWalletCards({
         userId,
         walletAddress: user.walletAddress,
-        bypassCache: options?.bypassCache,
+        bypassCache: Boolean(options?.bypassCache || reconciledCount > 0),
       });
       return verified.map((item) => ({
         card: item.card,

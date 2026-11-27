@@ -16,7 +16,8 @@ import {
   deriveVaultAuthorityPda,
   deriveVaultConfigPda,
   deriveVaultDepositPda,
-  getSolanaConnection,
+  executeWithSolanaConnection,
+  toVaultMatchId,
 } from "./solana-config";
 
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
@@ -91,12 +92,13 @@ export async function buildCreateBattleVaultInstruction(input: {
   playerB: PublicKey;
   expiresAtUnix: number;
 }): Promise<TransactionInstruction> {
+  const vaultMatchId = toVaultMatchId(input.matchId);
   const [configPda] = await deriveVaultConfigPda();
-  const [battleVaultPda] = await deriveBattleVaultPda(input.matchId);
+  const [battleVaultPda] = await deriveBattleVaultPda(vaultMatchId);
 
   const data = Buffer.concat([
     anchorDiscriminator("create_battle_vault"),
-    encodeBorshString(input.matchId),
+    encodeBorshString(vaultMatchId),
     Buffer.from(input.playerA.toBytes()),
     Buffer.from(input.playerB.toBytes()),
     encodeI64LE(input.expiresAtUnix),
@@ -121,7 +123,8 @@ export async function buildLockToken2022Instruction(input: {
   mint: PublicKey;
   amount: number;
 }): Promise<TransactionInstruction> {
-  const [battleVaultPda] = await deriveBattleVaultPda(input.matchId);
+  const vaultMatchId = toVaultMatchId(input.matchId);
+  const [battleVaultPda] = await deriveBattleVaultPda(vaultMatchId);
   const [vaultAuthorityPda] = await deriveVaultAuthorityPda();
   const [ownerAta, vaultAta, [vaultDepositPda]] = await Promise.all([
     deriveAssociatedTokenAddress(input.owner, input.mint, TOKEN_2022_PROGRAM_ID),
@@ -135,7 +138,7 @@ export async function buildLockToken2022Instruction(input: {
 
   const data = Buffer.concat([
     anchorDiscriminator("lock_token_2022_card"),
-    encodeBorshString(input.matchId),
+    encodeBorshString(vaultMatchId),
     encodeU64LE(input.amount),
   ]);
 
@@ -167,7 +170,8 @@ export async function buildLockCoreCardInstruction(input: {
   asset: PublicKey;
   collection?: PublicKey | null;
 }): Promise<TransactionInstruction> {
-  const [battleVaultPda] = await deriveBattleVaultPda(input.matchId);
+  const vaultMatchId = toVaultMatchId(input.matchId);
+  const [battleVaultPda] = await deriveBattleVaultPda(vaultMatchId);
   const [vaultAuthorityPda] = await deriveVaultAuthorityPda();
   const [vaultDepositPda] = await deriveVaultDepositPda(
     battleVaultPda,
@@ -177,7 +181,7 @@ export async function buildLockCoreCardInstruction(input: {
 
   const data = Buffer.concat([
     anchorDiscriminator("lock_core_card"),
-    encodeBorshString(input.matchId),
+    encodeBorshString(vaultMatchId),
   ]);
 
   return new TransactionInstruction({
@@ -201,9 +205,9 @@ export async function buildLockCoreCardInstruction(input: {
 }
 
 /**
- * Splits up to 20 deck cards into chunked transactions (max 4 cards per tx)
+ * Splits up to 20 deck cards into chunked transactions (max 3 cards per tx)
  * so the player can approve all of them in a single `signAllTransactions()` call
- * without exceeding Solana's 1232-byte transaction limit.
+ * without exceeding Solana's 1232-byte transaction limit or compute budget.
  */
 export async function buildChunkedLockDeckTransactions(input: {
   matchId: string;
@@ -213,10 +217,12 @@ export async function buildChunkedLockDeckTransactions(input: {
   vaultPda: string;
   serializedTransactions: string[];
 }> {
-  const connection = getSolanaConnection();
+  const vaultMatchId = toVaultMatchId(input.matchId);
   const owner = new PublicKey(input.playerWallet);
-  const [battleVaultPda] = await deriveBattleVaultPda(input.matchId);
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
+  const [battleVaultPda] = await deriveBattleVaultPda(vaultMatchId);
+  const { blockhash } = await executeWithSolanaConnection((connection) =>
+    connection.getLatestBlockhash("confirmed")
+  );
 
   const instructions: TransactionInstruction[] = [];
   for (const card of input.cards) {
@@ -225,7 +231,7 @@ export async function buildChunkedLockDeckTransactions(input: {
       instructions.push(
         await buildLockCoreCardInstruction({
           owner,
-          matchId: input.matchId,
+          matchId: vaultMatchId,
           asset: mintOrAsset,
           collection: card.collectionAddress
             ? new PublicKey(card.collectionAddress)
@@ -236,7 +242,7 @@ export async function buildChunkedLockDeckTransactions(input: {
       instructions.push(
         await buildLockToken2022Instruction({
           owner,
-          matchId: input.matchId,
+          matchId: vaultMatchId,
           mint: mintOrAsset,
           amount: card.quantity,
         })
@@ -244,7 +250,7 @@ export async function buildChunkedLockDeckTransactions(input: {
     }
   }
 
-  const CHUNK_SIZE = 4;
+  const CHUNK_SIZE = 3;
   const serializedTransactions: string[] = [];
   for (let i = 0; i < instructions.length; i += CHUNK_SIZE) {
     const tx = new Transaction({
