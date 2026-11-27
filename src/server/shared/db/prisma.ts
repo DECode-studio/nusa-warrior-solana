@@ -15,7 +15,14 @@ function createPrismaClient(): PrismaClient {
   if (!connectionString) {
     throw new Error("DATABASE_URL must be configured when Prisma storage is enabled.");
   }
-  const adapter = new PrismaPg({ connectionString });
+  // Tuning pg.Pool untuk mencegah pool exhaustion saat banyak request battle concurrent ke Neon.
+  const poolMax = Number(process.env.DATABASE_POOL_MAX ?? 20);
+  const adapter = new PrismaPg({
+    connectionString,
+    max: Number.isFinite(poolMax) && poolMax > 0 ? poolMax : 20,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
   return new PrismaClient({ adapter });
 }
 

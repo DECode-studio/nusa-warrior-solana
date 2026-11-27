@@ -662,7 +662,8 @@ export async function reconnectBattleSessionUseCase(
       Boolean(current.opponentReconnectDeadlineAt && Date.parse(current.opponentReconnectDeadlineAt) <= now) ||
       Boolean(current.turnDeadlineAt && Date.parse(current.turnDeadlineAt) <= now)
     ) {
-      await sweepBattleSessionsUseCase(new Date(now));
+      // Hanya sweep sesi ini agar tidak memindai & mengunci seluruh sesi ACTIVE di DB.
+      await sweepBattleSessionsUseCase(new Date(now), id);
       current = await battleRepository.getBattleSession(id, userId) ?? current;
       if (current.status === "COMPLETED") return toSessionView(current, userId);
     }
@@ -695,11 +696,13 @@ export async function reconnectLatestActiveBattleSessionUseCase(
   }
 }
 
-export async function sweepBattleSessionsUseCase(now = new Date()): Promise<number> {
+// Terima sessionId opsional agar sweep dari /reconnect & /actions tidak scan seluruh tabel ACTIVE.
+export async function sweepBattleSessionsUseCase(now = new Date(), sessionId?: string): Promise<number> {
   const expired = await battleRepository.sweepBattleSessions(
     now,
     new Date(now.getTime() - BATTLE_HEARTBEAT_STALE_MS),
-    BATTLE_RECONNECT_GRACE_MS
+    BATTLE_RECONNECT_GRACE_MS,
+    sessionId
   );
   if (expired > 0) {
     logServerEvent("info", "battle.sessions.timed_out", { count: expired });
@@ -873,7 +876,8 @@ export async function submitBattleActionUseCase(input: {
       Boolean(record.opponentReconnectDeadlineAt && Date.parse(record.opponentReconnectDeadlineAt) <= now) ||
       Boolean(record.turnDeadlineAt && Date.parse(record.turnDeadlineAt) <= now)
     ) {
-      await sweepBattleSessionsUseCase(new Date(now));
+      // Batasi sweep ke match ini saja untuk menghindari lock contention lintas sesi.
+      await sweepBattleSessionsUseCase(new Date(now), input.id);
       const latest = await battleRepository.getBattleSession(input.id, input.userId);
       if (latest?.status === "COMPLETED") return toSessionView(latest, input.userId);
     }
@@ -891,7 +895,8 @@ export async function submitBattleActionUseCase(input: {
     throw AppError.conflict("State match sudah berubah. Muat state terbaru sebelum mengirim aksi.");
   }
   if (record.turnDeadlineAt && Date.parse(record.turnDeadlineAt) <= Date.now()) {
-    await sweepBattleSessionsUseCase();
+    // Batasi sweep timeout giliran ke match ini saja.
+    await sweepBattleSessionsUseCase(new Date(), input.id);
     if (input.action.type === "SURRENDER") {
       const latest = await battleRepository.getBattleSession(input.id, input.userId);
       if (latest && latest.status !== "ACTIVE") return toSessionView(latest, input.userId);
