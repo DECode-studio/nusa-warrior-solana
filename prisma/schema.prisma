@@ -802,11 +802,13 @@ model AuctionListing {
   bids                AuctionBid[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
+  deletedAt           DateTime?
 
   @@index([status, endsAt])
   @@index([sellerId, status])
   @@index([highestBidderId, status])
   @@index([cardId, status])
+  @@index([deletedAt])
   @@map("auction_listings")
 }
 
@@ -826,10 +828,12 @@ model AuctionBid {
   refundedAt        DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?
 
   @@index([auctionId, createdAt])
   @@index([bidderId, status])
   @@index([auctionId, bidderId])
+  @@index([deletedAt])
   @@map("auction_bids")
 }
 
