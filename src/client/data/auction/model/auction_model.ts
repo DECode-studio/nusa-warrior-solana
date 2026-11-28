@@ -65,7 +65,7 @@ export interface AuctionListingApiModel {
   feeAmount: number;
   sellerPayout: number;
   bidCount: number;
-  durationHours: number;
+  durationMinutes: number;
   status: AuctionStatusValue;
   startsAt: string;
   originalEndsAt: string;
@@ -136,7 +136,7 @@ export interface PreparedCreateAuctionApiModel {
   tokenStandard: AuctionTokenStandard;
   collectionAddress: string;
   startingPrice: number;
-  durationHours: number;
+  durationMinutes: number;
   serializedTransaction: string;
   recentBlockhash: string;
 }
@@ -146,7 +146,7 @@ export interface PreparedManageAuctionApiModel {
   serializedTransaction: string;
   recentBlockhash: string;
   startingPrice?: number;
-  durationHours?: number;
+  durationMinutes?: number;
 }
 
 export interface PreparedBidApiModel {
@@ -226,7 +226,7 @@ export function mapAuctionListingToEntity(
     feeAmount: raw.feeAmount,
     sellerPayout: raw.sellerPayout,
     bidCount: raw.bidCount,
-    durationHours: raw.durationHours,
+    durationMinutes: raw.durationMinutes,
     status: raw.status,
     startsAt: raw.startsAt,
     originalEndsAt: raw.originalEndsAt,
@@ -270,7 +270,7 @@ export function mapAuctionDetailToEntity(
     feeAmount: listing.feeAmount,
     sellerPayout: listing.sellerPayout,
     bidCount: listing.bidCount,
-    durationHours: listing.durationHours,
+    durationMinutes: listing.durationMinutes,
     status: listing.status,
     startsAt: listing.startsAt,
     originalEndsAt: listing.originalEndsAt,
@@ -358,7 +358,7 @@ export function mapPreparedCreateAuctionToEntity(
     tokenStandard: raw.tokenStandard,
     collectionAddress: raw.collectionAddress,
     startingPrice: raw.startingPrice,
-    durationHours: raw.durationHours,
+    durationMinutes: raw.durationMinutes,
     serializedTransaction: raw.serializedTransaction,
     recentBlockhash: raw.recentBlockhash,
   };
@@ -372,7 +372,7 @@ export function mapPreparedManageAuctionToEntity(
     serializedTransaction: raw.serializedTransaction,
     recentBlockhash: raw.recentBlockhash,
     startingPrice: raw.startingPrice,
-    durationHours: raw.durationHours,
+    durationMinutes: raw.durationMinutes,
   };
 }
 

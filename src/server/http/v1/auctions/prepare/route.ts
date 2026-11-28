@@ -7,7 +7,7 @@ import { prepareCreateAuctionUseCase } from "@/server/modules/auction/applicatio
 const prepareCreateSchema = z.object({
   cardId: z.string().trim().min(1),
   startingPrice: z.number().int().min(50),
-  durationHours: z.number().int().min(1).max(24),
+  durationMinutes: z.number().int().min(5).max(1440),
 });
 
 export async function POST(request: Request) {

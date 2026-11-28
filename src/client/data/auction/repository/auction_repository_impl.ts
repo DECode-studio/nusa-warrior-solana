@@ -49,7 +49,7 @@ export class AuctionRepositoryImpl implements AuctionRepository {
   public async prepareCreateAuction(input: {
     cardId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedCreateAuctionEntity> {
     const raw = await this.dataSource.prepareCreateAuction(input);
     return mapPreparedCreateAuctionToEntity(raw);
@@ -62,7 +62,7 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     tokenStandard: AuctionTokenStandard;
     collectionAddress: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingEntity> {
     const raw = await this.dataSource.confirmCreateAuction(input);
@@ -72,7 +72,7 @@ export class AuctionRepositoryImpl implements AuctionRepository {
   public async prepareEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedManageAuctionEntity> {
     const raw = await this.dataSource.prepareEditAuction(input);
     return mapPreparedManageAuctionToEntity(raw);
@@ -81,7 +81,7 @@ export class AuctionRepositoryImpl implements AuctionRepository {
   public async confirmEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingEntity> {
     const raw = await this.dataSource.confirmEditAuction(input);

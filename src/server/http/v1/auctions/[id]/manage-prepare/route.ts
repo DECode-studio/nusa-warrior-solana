@@ -14,7 +14,7 @@ interface RouteContext {
 const prepareEditSchema = z.object({
   action: z.literal("edit"),
   startingPrice: z.number().int().min(50),
-  durationHours: z.number().int().min(1).max(24),
+  durationMinutes: z.number().int().min(5).max(1440),
 });
 
 const prepareCancelSchema = z.object({
@@ -38,7 +38,7 @@ export async function POST(request: Request, context: RouteContext) {
         sessionWallet: session.walletAddress,
         auctionId: id,
         startingPrice: body.startingPrice,
-        durationHours: body.durationHours,
+        durationMinutes: body.durationMinutes,
       });
       return okResponse(data);
     }

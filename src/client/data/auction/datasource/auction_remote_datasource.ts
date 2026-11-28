@@ -40,7 +40,7 @@ export class AuctionRemoteDataSource {
   public async prepareCreateAuction(input: {
     cardId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedCreateAuctionApiModel> {
     return apiClient.post<PreparedCreateAuctionApiModel>(
       API_ROUTES.AUCTIONS.prepareCreate,
@@ -55,7 +55,7 @@ export class AuctionRemoteDataSource {
     tokenStandard: AuctionTokenStandard;
     collectionAddress: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingApiModel> {
     return apiClient.post<AuctionListingApiModel>(
@@ -67,14 +67,14 @@ export class AuctionRemoteDataSource {
   public async prepareEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedManageAuctionApiModel> {
     return apiClient.post<PreparedManageAuctionApiModel>(
       API_ROUTES.AUCTIONS.managePrepare(input.auctionId),
       {
         action: "edit",
         startingPrice: input.startingPrice,
-        durationHours: input.durationHours,
+        durationMinutes: input.durationMinutes,
       }
     );
   }
@@ -82,14 +82,14 @@ export class AuctionRemoteDataSource {
   public async confirmEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingApiModel> {
     return apiClient.patch<AuctionListingApiModel>(
       API_ROUTES.AUCTIONS.detail(input.auctionId),
       {
         startingPrice: input.startingPrice,
-        durationHours: input.durationHours,
+        durationMinutes: input.durationMinutes,
         txSignature: input.txSignature,
       }
     );

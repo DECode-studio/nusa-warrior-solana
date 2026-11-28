@@ -210,7 +210,7 @@ export async function createAuctionRecord(input: {
   startingPrice: number;
   bidIncrement: number;
   feeBps: number;
-  durationHours: number;
+  durationMinutes: number;
   startsAt: Date;
   endsAt: Date;
   createTxSignature: string;
@@ -229,7 +229,8 @@ export async function createAuctionRecord(input: {
       startingPrice: input.startingPrice,
       bidIncrement: input.bidIncrement,
       feeBps: input.feeBps,
-      durationHours: input.durationHours,
+      durationHours: Math.max(1, Math.ceil(input.durationMinutes / 60)),
+      durationMinutes: input.durationMinutes,
       startsAt: input.startsAt,
       originalEndsAt: input.endsAt,
       endsAt: input.endsAt,
@@ -242,7 +243,7 @@ export async function createAuctionRecord(input: {
 export async function updateAuctionRecord(input: {
   auctionId: string;
   startingPrice: number;
-  durationHours: number;
+  durationMinutes: number;
   endsAt: Date;
 }): Promise<AuctionWithRelations> {
   requirePrisma();
@@ -250,7 +251,8 @@ export async function updateAuctionRecord(input: {
     where: { id: input.auctionId },
     data: {
       startingPrice: input.startingPrice,
-      durationHours: input.durationHours,
+      durationHours: Math.max(1, Math.ceil(input.durationMinutes / 60)),
+      durationMinutes: input.durationMinutes,
       originalEndsAt: input.endsAt,
       endsAt: input.endsAt,
     },

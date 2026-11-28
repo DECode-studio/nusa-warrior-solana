@@ -134,9 +134,9 @@ const TRANSLATIONS: Record<string, { id?: string; en: string; zh: string }> = {
     zh: "起拍价必须为至少 50 NUSA 的整数。",
   },
   "auction.error.invalidDuration": {
-    id: "Durasi lelang harus antara 1 hingga 24 jam.",
-    en: "Auction duration must be between 1 and 24 hours.",
-    zh: "拍卖时长必须在 1 至 24 小时之间。",
+    id: "Durasi lelang harus antara 5 menit hingga 24 jam.",
+    en: "Auction duration must be between 5 minutes and 24 hours.",
+    zh: "拍卖时长必须在 5 分钟至 24 小时之间。",
   },
   "auction.error.maxActiveListings": {
     id: "Maksimal 5 lelang aktif secara bersamaan.",

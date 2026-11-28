@@ -20,7 +20,15 @@ export interface AuctionCreateEditModalProps {
   readonly onSuccess: (message: string) => Promise<void>;
 }
 
-const DURATION_PRESETS = [1, 6, 12, 24] as const;
+const DURATION_PRESETS = [
+  { minutes: 5, isHours: false, value: 5 },
+  { minutes: 15, isHours: false, value: 15 },
+  { minutes: 30, isHours: false, value: 30 },
+  { minutes: 60, isHours: true, value: 1 },
+  { minutes: 360, isHours: true, value: 6 },
+  { minutes: 720, isHours: true, value: 12 },
+  { minutes: 1440, isHours: true, value: 24 },
+] as const;
 
 export function AuctionCreateEditModal({
   mode,
@@ -177,39 +185,68 @@ export function AuctionCreateEditModal({
             </div>
 
             <div>
-              <label
-                htmlFor="auction-duration-hours"
-                className="mb-1.5 block text-sm font-semibold text-cream"
-              >
+              <label className="mb-1.5 block text-sm font-semibold text-cream">
                 {t(AUCTION_TEXT_CONSTANT.DURATION_LABEL)}
               </label>
-              <input
-                id="auction-duration-hours"
-                type="number"
-                min={1}
-                max={24}
-                step={1}
-                value={vm.durationHours}
-                onChange={(e) =>
-                  vm.setDurationHours(Number.parseInt(e.target.value, 10))
-                }
-                className="nc-input"
-                required
-              />
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label
+                    htmlFor="auction-duration-hours"
+                    className="mb-1 block text-xs text-subtle"
+                  >
+                    {t(AUCTION_TEXT_CONSTANT.DURATION_HOURS_INPUT_LABEL)} (0–24)
+                  </label>
+                  <input
+                    id="auction-duration-hours"
+                    type="number"
+                    min={0}
+                    max={24}
+                    step={1}
+                    value={vm.durationHoursPart}
+                    onChange={(e) =>
+                      vm.setDurationHoursPart(Number.parseInt(e.target.value, 10))
+                    }
+                    className="nc-input"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="auction-duration-minutes"
+                    className="mb-1 block text-xs text-subtle"
+                  >
+                    {t(AUCTION_TEXT_CONSTANT.DURATION_MINUTES_INPUT_LABEL)} (0–59)
+                  </label>
+                  <input
+                    id="auction-duration-minutes"
+                    type="number"
+                    min={0}
+                    max={59}
+                    step={1}
+                    value={vm.durationMinutesPart}
+                    disabled={vm.durationHoursPart === 24}
+                    onChange={(e) =>
+                      vm.setDurationMinutesPart(Number.parseInt(e.target.value, 10))
+                    }
+                    className="nc-input disabled:opacity-50"
+                  />
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {DURATION_PRESETS.map((preset) => (
                   <button
-                    key={preset}
+                    key={preset.minutes}
                     type="button"
-                    onClick={() => vm.setDurationHours(preset)}
-                    className={`min-h-[36px] rounded-lg border px-3 text-xs font-semibold transition-colors ${
-                      vm.durationHours === preset
+                    onClick={() => vm.applyDurationPreset(preset.minutes)}
+                    className={`min-h-[36px] rounded-lg border px-2.5 text-xs font-semibold transition-colors ${
+                      vm.totalDurationMinutes === preset.minutes
                         ? "border-primary bg-primary/20 text-fg"
                         : "border-border-base bg-surface-elevated text-muted hover:border-border-strong"
                     }`}
                   >
-                    {preset}
-                    {t(AUCTION_TEXT_CONSTANT.HOUR_SHORT_SUFFIX)}
+                    {preset.value}
+                    {preset.isHours
+                      ? t(AUCTION_TEXT_CONSTANT.HOUR_SHORT_SUFFIX)
+                      : t(AUCTION_TEXT_CONSTANT.MINUTE_SHORT_SUFFIX)}
                   </button>
                 ))}
               </div>

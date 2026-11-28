@@ -135,10 +135,41 @@ async function main() {
   const existing = await connection.getAccountInfo(configPda, "confirmed");
   if (existing) {
     console.log("AuctionConfig PDA already initialized:", configPda.toBase58());
+    console.log("Updating min_duration_secs to 300 (5 minutes)...");
+    const updateData = Buffer.concat([
+      anchorDiscriminator("update_config"),
+      Buffer.from([0]), // new_admin: None
+      Buffer.from([0]), // new_settler: None
+      Buffer.from([0]), // new_fee_treasury: None
+      Buffer.from([0]), // new_fee_bps: None
+      Buffer.from([0]), // new_min_bid_increment: None
+      Buffer.from([0]), // new_min_starting_price: None
+      Buffer.from([1]), // new_min_duration_secs: Some(300)
+      encodeI64LE(300n),
+      Buffer.from([1]), // new_max_duration_secs: Some(86400)
+      encodeI64LE(86_400n),
+    ]);
+    const updateIx = new TransactionInstruction({
+      programId,
+      keys: [
+        { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false },
+        { pubkey: configPda, isSigner: false, isWritable: true },
+      ],
+      data: updateData,
+    });
+    const updateSig = await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(updateIx),
+      [adminKeypair],
+      { commitment: "confirmed" }
+    );
+    console.log("AuctionConfig updated! Min duration is now 5 minutes (300s).");
+    console.log("Tx Signature:", updateSig);
+    console.log(`Explorer: https://explorer.solana.com/tx/${updateSig}?cluster=devnet`);
     return;
   }
 
-  // 10% fee (1000 bps), 50 NUSA min increment, 50 NUSA min start, 1h..24h duration
+  // 10% fee (1000 bps), 50 NUSA min increment, 50 NUSA min start, 5m..24h duration
   const data = Buffer.concat([
     anchorDiscriminator("initialize_config"),
     Buffer.from(settlerKeypair.publicKey.toBytes()),
@@ -146,7 +177,7 @@ async function main() {
     encodeU16LE(1000),
     encodeU64LE(50_000_000n),
     encodeU64LE(50_000_000n),
-    encodeI64LE(3_600n),
+    encodeI64LE(300n),
     encodeI64LE(86_400n),
   ]);
 

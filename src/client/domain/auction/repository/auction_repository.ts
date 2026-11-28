@@ -27,7 +27,7 @@ export interface AuctionRepository {
   prepareCreateAuction(input: {
     cardId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedCreateAuctionEntity>;
   confirmCreateAuction(input: {
     auctionId: string;
@@ -36,18 +36,18 @@ export interface AuctionRepository {
     tokenStandard: AuctionTokenStandard;
     collectionAddress: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingEntity>;
   prepareEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedManageAuctionEntity>;
   confirmEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingEntity>;
   prepareCancelAuction(auctionId: string): Promise<PreparedManageAuctionEntity>;

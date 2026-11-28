@@ -21,6 +21,9 @@ export interface UseAuctionCreateEditModalParams {
   readonly onSuccess: (message: string) => Promise<void>;
 }
 
+const MIN_DURATION_MINUTES = 5;
+const MAX_DURATION_MINUTES = 1440;
+
 export function useAuctionCreateEditModal({
   mode,
   sellableCards,
@@ -41,19 +44,59 @@ export function useAuctionCreateEditModal({
     [editingAuction?.card.id, mode, sellableCards]
   );
 
+  const initialTotalMinutes =
+    mode === "edit" ? (editingAuction?.durationMinutes ?? 60) : 60;
+
   const [selectedCardId, setSelectedCardId] = useState<string>(initialCardId);
   const [startingPriceStr, setStartingPriceStr] = useState<string>(
     mode === "edit" ? String(editingAuction?.startingPrice ?? 100) : "100"
   );
-  const [durationHours, setDurationHoursState] = useState<number>(
-    mode === "edit" ? (editingAuction?.durationHours ?? 12) : 12
+  const [durationHoursPart, setDurationHoursPartState] = useState<number>(
+    Math.floor(initialTotalMinutes / 60)
+  );
+  const [durationMinutesPart, setDurationMinutesPartState] = useState<number>(
+    initialTotalMinutes % 60
   );
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const setDurationHours = useCallback((hours: number) => {
-    setDurationHoursState(Math.max(1, Math.min(24, hours || 1)));
+  const setDurationHoursPart = useCallback((hours: number) => {
+    const safeHours = Number.isFinite(hours)
+      ? Math.max(0, Math.min(24, Math.trunc(hours)))
+      : 0;
+    setDurationHoursPartState(safeHours);
+    if (safeHours === 24) {
+      setDurationMinutesPartState(0);
+    }
   }, []);
+
+  const setDurationMinutesPart = useCallback(
+    (minutes: number) => {
+      const safeMinutes = Number.isFinite(minutes)
+        ? Math.max(0, Math.min(59, Math.trunc(minutes)))
+        : 0;
+      if (durationHoursPart === 24) {
+        setDurationMinutesPartState(0);
+        return;
+      }
+      setDurationMinutesPartState(safeMinutes);
+    },
+    [durationHoursPart]
+  );
+
+  const applyDurationPreset = useCallback((totalMinutes: number) => {
+    const clamped = Math.max(
+      MIN_DURATION_MINUTES,
+      Math.min(MAX_DURATION_MINUTES, totalMinutes)
+    );
+    setDurationHoursPartState(Math.floor(clamped / 60));
+    setDurationMinutesPartState(clamped % 60);
+  }, []);
+
+  const totalDurationMinutes = useMemo(
+    () => durationHoursPart * 60 + durationMinutesPart,
+    [durationHoursPart, durationMinutesPart]
+  );
 
   const pricingPreview = useMemo(() => {
     const parsedPrice = Number.parseInt(startingPriceStr, 10);
@@ -84,7 +127,10 @@ export function useAuctionCreateEditModal({
       setLocalError(t(AUCTION_TEXT_CONSTANT.VALIDATION_INVALID_PRICE));
       return;
     }
-    if (durationHours < 1 || durationHours > 24) {
+    if (
+      totalDurationMinutes < MIN_DURATION_MINUTES ||
+      totalDurationMinutes > MAX_DURATION_MINUTES
+    ) {
       setLocalError(t(AUCTION_TEXT_CONSTANT.VALIDATION_INVALID_DURATION));
       return;
     }
@@ -95,7 +141,7 @@ export function useAuctionCreateEditModal({
         const prepared = await auctionUseCase.prepareEditAuction({
           auctionId: editingAuction.id,
           startingPrice: parsedPrice,
-          durationHours,
+          durationMinutes: totalDurationMinutes,
         });
         const txSignature = await sendBase64SolanaTx({
           serializedTransaction: prepared.serializedTransaction,
@@ -106,7 +152,7 @@ export function useAuctionCreateEditModal({
         await auctionUseCase.confirmEditAuction({
           auctionId: editingAuction.id,
           startingPrice: parsedPrice,
-          durationHours,
+          durationMinutes: totalDurationMinutes,
           txSignature,
         });
         onClose();
@@ -122,7 +168,7 @@ export function useAuctionCreateEditModal({
       const prepared = await auctionUseCase.prepareCreateAuction({
         cardId: selectedCardId,
         startingPrice: parsedPrice,
-        durationHours,
+        durationMinutes: totalDurationMinutes,
       });
       const txSignature = await sendBase64SolanaTx({
         serializedTransaction: prepared.serializedTransaction,
@@ -137,7 +183,7 @@ export function useAuctionCreateEditModal({
         tokenStandard: prepared.tokenStandard,
         collectionAddress: prepared.collectionAddress,
         startingPrice: prepared.startingPrice,
-        durationHours: prepared.durationHours,
+        durationMinutes: prepared.durationMinutes,
         txSignature,
       });
       onClose();
@@ -158,7 +204,6 @@ export function useAuctionCreateEditModal({
   }, [
     auctionUseCase,
     connection,
-    durationHours,
     editingAuction,
     mode,
     onClose,
@@ -169,6 +214,7 @@ export function useAuctionCreateEditModal({
     signTransaction,
     startingPriceStr,
     t,
+    totalDurationMinutes,
   ]);
 
   return {
@@ -178,8 +224,12 @@ export function useAuctionCreateEditModal({
     setSelectedCardId,
     startingPriceStr,
     setStartingPriceStr,
-    durationHours,
-    setDurationHours,
+    durationHoursPart,
+    setDurationHoursPart,
+    durationMinutesPart,
+    setDurationMinutesPart,
+    totalDurationMinutes,
+    applyDurationPreset,
     localError,
     isSubmitting,
     minFirstBid: pricingPreview.minFirstBid,

@@ -125,7 +125,7 @@ function toListingDto(
     feeAmount: auction.feeAmount,
     sellerPayout: auction.sellerPayout,
     bidCount: auction.bidCount,
-    durationHours: auction.durationHours,
+    durationMinutes: auction.durationMinutes,
     status: auction.status,
     startsAt: auction.startsAt.toISOString(),
     originalEndsAt: auction.originalEndsAt.toISOString(),
@@ -413,7 +413,7 @@ export async function prepareCreateAuctionUseCase(input: {
   sessionWallet?: string | null;
   cardId: string;
   startingPrice: number;
-  durationHours: number;
+  durationMinutes: number;
 }) {
   const sellerWallet = await resolvePlayerWallet(
     input.userId,
@@ -427,9 +427,9 @@ export async function prepareCreateAuctionUseCase(input: {
     throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_STARTING_PRICE);
   }
   if (
-    !Number.isInteger(input.durationHours) ||
-    input.durationHours < AUCTION_POLICY.minDurationHours ||
-    input.durationHours > AUCTION_POLICY.maxDurationHours
+    !Number.isInteger(input.durationMinutes) ||
+    input.durationMinutes < AUCTION_POLICY.minDurationMinutes ||
+    input.durationMinutes > AUCTION_POLICY.maxDurationMinutes
   ) {
     throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_DURATION);
   }
@@ -471,7 +471,7 @@ export async function prepareCreateAuctionUseCase(input: {
     owned.tokenStandard ??
     (owned.card.tokenStandard === "MPL_CORE" ? "MPL_CORE" : "TOKEN_2022");
   const auctionId = `auc_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
-  const durationSecs = input.durationHours * 3600;
+  const durationSecs = input.durationMinutes * 60;
 
   const txData = await buildCreateAuctionTransaction({
     auctionId,
@@ -491,7 +491,7 @@ export async function prepareCreateAuctionUseCase(input: {
     tokenStandard,
     collectionAddress: owned.card.collectionAddress ?? "",
     startingPrice: input.startingPrice,
-    durationHours: input.durationHours,
+    durationMinutes: input.durationMinutes,
     serializedTransaction: txData.serializedTransaction,
     recentBlockhash: txData.recentBlockhash,
   };
@@ -506,7 +506,7 @@ export async function confirmCreateAuctionUseCase(input: {
   tokenStandard: "TOKEN_2022" | "MPL_CORE";
   collectionAddress?: string | null;
   startingPrice: number;
-  durationHours: number;
+  durationMinutes: number;
   txSignature: string;
 }): Promise<AuctionListingDto> {
   const sellerWallet = await resolvePlayerWallet(
@@ -523,7 +523,7 @@ export async function confirmCreateAuctionUseCase(input: {
 
   const startsAt = new Date();
   const endsAt = new Date(
-    startsAt.getTime() + input.durationHours * 3600 * 1000
+    startsAt.getTime() + input.durationMinutes * 60 * 1000
   );
 
   const created = await createAuctionRecord({
@@ -538,7 +538,7 @@ export async function confirmCreateAuctionUseCase(input: {
     startingPrice: input.startingPrice,
     bidIncrement: AUCTION_POLICY.minBidIncrementNusa,
     feeBps: AUCTION_POLICY.feeBps,
-    durationHours: input.durationHours,
+    durationMinutes: input.durationMinutes,
     startsAt,
     endsAt,
     createTxSignature: input.txSignature,
@@ -552,7 +552,7 @@ export async function prepareUpdateAuctionUseCase(input: {
   sessionWallet?: string | null;
   auctionId: string;
   startingPrice: number;
-  durationHours: number;
+  durationMinutes: number;
 }) {
   const sellerWallet = await resolvePlayerWallet(
     input.userId,
@@ -576,15 +576,15 @@ export async function prepareUpdateAuctionUseCase(input: {
     throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_STARTING_PRICE);
   }
   if (
-    !Number.isInteger(input.durationHours) ||
-    input.durationHours < AUCTION_POLICY.minDurationHours ||
-    input.durationHours > AUCTION_POLICY.maxDurationHours
+    !Number.isInteger(input.durationMinutes) ||
+    input.durationMinutes < AUCTION_POLICY.minDurationMinutes ||
+    input.durationMinutes > AUCTION_POLICY.maxDurationMinutes
   ) {
     throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_DURATION);
   }
 
   const newEndsAtMs =
-    auction.startsAt.getTime() + input.durationHours * 3600 * 1000;
+    auction.startsAt.getTime() + input.durationMinutes * 60 * 1000;
   if (newEndsAtMs <= Date.now()) {
     throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_END_TIME);
   }
@@ -593,13 +593,13 @@ export async function prepareUpdateAuctionUseCase(input: {
     auctionId: auction.id,
     sellerWallet,
     newStartingPriceNusa: input.startingPrice,
-    newDurationSecs: input.durationHours * 3600,
+    newDurationSecs: input.durationMinutes * 60,
   });
 
   return {
     auctionId: auction.id,
     startingPrice: input.startingPrice,
-    durationHours: input.durationHours,
+    durationMinutes: input.durationMinutes,
     ...txData,
   };
 }
@@ -609,7 +609,7 @@ export async function confirmUpdateAuctionUseCase(input: {
   sessionWallet?: string | null;
   auctionId: string;
   startingPrice: number;
-  durationHours: number;
+  durationMinutes: number;
   txSignature: string;
 }): Promise<AuctionListingDto> {
   const sellerWallet = await resolvePlayerWallet(
@@ -632,12 +632,12 @@ export async function confirmUpdateAuctionUseCase(input: {
   });
 
   const newEndsAt = new Date(
-    auction.startsAt.getTime() + input.durationHours * 3600 * 1000
+    auction.startsAt.getTime() + input.durationMinutes * 60 * 1000
   );
   const updated = await updateAuctionRecord({
     auctionId: auction.id,
     startingPrice: input.startingPrice,
-    durationHours: input.durationHours,
+    durationMinutes: input.durationMinutes,
     endsAt: newEndsAt,
   });
 

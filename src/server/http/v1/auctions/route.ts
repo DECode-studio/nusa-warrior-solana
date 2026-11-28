@@ -27,7 +27,7 @@ const confirmCreateSchema = z.object({
   tokenStandard: z.enum(["TOKEN_2022", "MPL_CORE"]),
   collectionAddress: z.string().trim().default(""),
   startingPrice: z.number().int().min(50),
-  durationHours: z.number().int().min(1).max(24),
+  durationMinutes: z.number().int().min(5).max(1440),
   txSignature: z.string().trim().min(32).max(128),
 });
 

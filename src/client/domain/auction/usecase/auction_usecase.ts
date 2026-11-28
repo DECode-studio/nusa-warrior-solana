@@ -34,7 +34,7 @@ export class AuctionUseCase {
   public prepareCreateAuction(input: {
     cardId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedCreateAuctionEntity> {
     return this.repository.prepareCreateAuction(input);
   }
@@ -46,7 +46,7 @@ export class AuctionUseCase {
     tokenStandard: AuctionTokenStandard;
     collectionAddress: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingEntity> {
     return this.repository.confirmCreateAuction(input);
@@ -55,7 +55,7 @@ export class AuctionUseCase {
   public prepareEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
   }): Promise<PreparedManageAuctionEntity> {
     return this.repository.prepareEditAuction(input);
   }
@@ -63,7 +63,7 @@ export class AuctionUseCase {
   public confirmEditAuction(input: {
     auctionId: string;
     startingPrice: number;
-    durationHours: number;
+    durationMinutes: number;
     txSignature: string;
   }): Promise<AuctionListingEntity> {
     return this.repository.confirmEditAuction(input);

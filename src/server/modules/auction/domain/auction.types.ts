@@ -10,8 +10,8 @@ import type {
 export const AUCTION_POLICY = {
   minStartingPriceNusa: 50,
   minBidIncrementNusa: 50,
-  minDurationHours: 1,
-  maxDurationHours: 24,
+  minDurationMinutes: 5,
+  maxDurationMinutes: 1440,
   feeBps: 1000,
   feePercent: 10,
   maxActiveListingsPerUser: 5,
@@ -123,7 +123,7 @@ export interface AuctionListingDto {
   feeAmount: number;
   sellerPayout: number;
   bidCount: number;
-  durationHours: number;
+  durationMinutes: number;
   status: AuctionStatus;
   startsAt: string;
   originalEndsAt: string;

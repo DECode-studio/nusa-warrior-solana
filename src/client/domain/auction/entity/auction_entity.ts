@@ -62,7 +62,7 @@ export interface AuctionListingEntity {
   readonly feeAmount: number;
   readonly sellerPayout: number;
   readonly bidCount: number;
-  readonly durationHours: number;
+  readonly durationMinutes: number;
   readonly status: AuctionStatusValue;
   readonly startsAt: string;
   readonly originalEndsAt: string;
@@ -133,7 +133,7 @@ export interface PreparedCreateAuctionEntity {
   readonly tokenStandard: AuctionTokenStandard;
   readonly collectionAddress: string;
   readonly startingPrice: number;
-  readonly durationHours: number;
+  readonly durationMinutes: number;
   readonly serializedTransaction: string;
   readonly recentBlockhash: string;
 }
@@ -143,7 +143,7 @@ export interface PreparedManageAuctionEntity {
   readonly serializedTransaction: string;
   readonly recentBlockhash: string;
   readonly startingPrice?: number;
-  readonly durationHours?: number;
+  readonly durationMinutes?: number;
 }
 
 export interface PreparedBidEntity {
