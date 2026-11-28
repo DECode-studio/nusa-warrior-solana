@@ -130,6 +130,9 @@ model User {
   storyAssets          StoryMediaAsset[]
   storyCampaignEdits   StoryCampaignContent[]
   createdCards         Card[]                 @relation("UserCreatedCards")
+  auctionsCreated      AuctionListing[]       @relation("AuctionSeller")
+  auctionsWon          AuctionListing[]       @relation("AuctionHighestBidder")
+  auctionBids          AuctionBid[]
 
   @@map("users")
 }
@@ -206,6 +209,7 @@ model Card {
   ledgerEntries       CardLedgerEntry[]
   escrowItems         CardEscrowItem[]
   nftInstances        CardNftInstance[]
+  auctionListings     AuctionListing[]
 
   @@index([isCustom, customStatus])
   @@index([creatorId])
@@ -750,5 +754,84 @@ model TeamMember {
   @@index([isActive, displayOrder])
   @@map("team_members")
 }
+
+enum AuctionStatus {
+  ACTIVE
+  SETTLED
+  EXPIRED
+  CANCELLED
+}
+
+enum AuctionBidStatus {
+  HELD
+  WON
+  REFUNDED
+}
+
+model AuctionListing {
+  id                  String            @id @default(cuid())
+  sellerId            String
+  seller              User              @relation("AuctionSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  sellerWallet        String
+  cardId              String
+  card                Card              @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  cardMintOrAsset     String
+  tokenStandard       CardTokenStandard @default(TOKEN_2022)
+  collectionAddress   String?
+  auctionPda          String            @unique
+  startingPrice       Int
+  currentHighestBid   Int               @default(0)
+  highestBidderId     String?
+  highestBidder       User?             @relation("AuctionHighestBidder", fields: [highestBidderId], references: [id], onDelete: SetNull)
+  highestBidderWallet String?
+  bidIncrement        Int               @default(50)
+  feeBps              Int               @default(1000)
+  feeAmount           Int               @default(0)
+  sellerPayout        Int               @default(0)
+  bidCount            Int               @default(0)
+  durationHours       Int
+  status              AuctionStatus     @default(ACTIVE)
+  startsAt            DateTime          @default(now())
+  originalEndsAt      DateTime
+  endsAt              DateTime
+  extendedSecs        Int               @default(0)
+  createTxSignature   String            @unique
+  cancelTxSignature   String?
+  settleTxSignature   String?
+  settledAt           DateTime?
+  bids                AuctionBid[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([status, endsAt])
+  @@index([sellerId, status])
+  @@index([highestBidderId, status])
+  @@index([cardId, status])
+  @@map("auction_listings")
+}
+
+model AuctionBid {
+  id                String           @id @default(cuid())
+  auctionId         String
+  auction           AuctionListing   @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidderId          String
+  bidder            User             @relation(fields: [bidderId], references: [id], onDelete: Restrict)
+  bidderWallet      String
+  amount            Int
+  deltaAmount       Int
+  status            AuctionBidStatus @default(HELD)
+  bidEscrowPda      String
+  txSignature       String           @unique
+  refundTxSignature String?
+  refundedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([auctionId, createdAt])
+  @@index([bidderId, status])
+  @@index([auctionId, bidderId])
+  @@map("auction_bids")
+}
+
 
 
