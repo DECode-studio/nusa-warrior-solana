@@ -17,6 +17,7 @@ import {
   verifyAuctionProgramTransaction,
 } from "@/server/modules/solana/nusa-auction.service";
 import { deriveAuctionPda } from "@/server/modules/solana/solana-config";
+import { AUCTION_MESSAGE_KEYS } from "../domain/auction.messages";
 import {
   AUCTION_POLICY,
   calculateAuctionFeeSplit,
@@ -54,9 +55,7 @@ async function resolvePlayerWallet(
     select: { walletAddress: true },
   });
   if (!user?.walletAddress) {
-    throw AppError.badRequest(
-      "Hubungkan dompet Solana terlebih dahulu untuk menggunakan fitur Lelang."
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.WALLET_REQUIRED);
   }
   return user.walletAddress;
 }
@@ -209,7 +208,6 @@ async function tryAutoSettleAuction(
       winnerId: hasWinner ? auction.highestBidderId : null,
     });
 
-    // Refund losing bidders sequentially after settlement.
     if (hasWinner) {
       const losingBidders = new Map<string, string>();
       for (const bid of auction.bids) {
@@ -267,9 +265,16 @@ export async function listAuctionsUseCase(input: {
   cardType?: CardType;
   search?: string;
   sort?: "ending_soon" | "price_asc" | "price_desc" | "most_bids" | "newest";
+  page?: number;
+  pageSize?: number;
 }): Promise<AuctionListResponseDto> {
-  // Best-effort lazy settlement of expired listings.
   await sweepExpiredAuctionsUseCase().catch(() => undefined);
+
+  const safePage = Math.max(1, Math.trunc(input.page ?? 1));
+  const safePageSize = Math.min(
+    AUCTION_POLICY.maxPageSize,
+    Math.max(1, Math.trunc(input.pageSize ?? AUCTION_POLICY.defaultPageSize))
+  );
 
   const user = await prisma.user.findUnique({
     where: { id: input.userId },
@@ -278,7 +283,7 @@ export async function listAuctionsUseCase(input: {
   const walletAddress = input.sessionWallet ?? user?.walletAddress ?? null;
 
   const [
-    rawAuctions,
+    paginated,
     heldAuctions,
     activeSellingCount,
     deckUsageMap,
@@ -292,6 +297,8 @@ export async function listAuctionsUseCase(input: {
       cardType: input.cardType,
       search: input.search,
       sort: input.sort,
+      page: safePage,
+      pageSize: safePageSize,
     }),
     getUserHeldBidsOnActiveAuctions(input.userId),
     countActiveAuctionsBySeller(input.userId),
@@ -334,16 +341,15 @@ export async function listAuctionsUseCase(input: {
 
     let blockedReason: string | null = null;
     if (owned.card.publicationStatus !== "ACTIVE") {
-      blockedReason = "Kartu tidak aktif.";
+      blockedReason = AUCTION_MESSAGE_KEYS.CARD_INACTIVE;
     } else if (owned.card.isCustom && owned.card.customStatus !== "APPROVED") {
-      blockedReason = "Kartu kustom belum disetujui admin.";
+      blockedReason = AUCTION_MESSAGE_KEYS.CUSTOM_CARD_NOT_APPROVED;
     } else if (!mintOrAssetAddress) {
-      blockedReason = "Kartu belum memiliki aset on-chain di Solana.";
+      blockedReason = AUCTION_MESSAGE_KEYS.CARD_NO_ONCHAIN_MINT;
     } else if (walletQty <= 0) {
-      blockedReason = "Kartu sedang terkunci di vault lain.";
+      blockedReason = AUCTION_MESSAGE_KEYS.CARD_IN_OTHER_VAULT;
     } else if (available <= 0) {
-      blockedReason =
-        "Kartu sedang terpasang di Deck. Keluarkan dari Deck terlebih dahulu.";
+      blockedReason = AUCTION_MESSAGE_KEYS.CARD_IN_DECK;
     }
 
     return {
@@ -366,14 +372,20 @@ export async function listAuctionsUseCase(input: {
       walletQuantity: walletQty,
       inDeckQuantity: inDeckQty,
       availableForAuction: available,
-      mintOrAssetAddress,
-      collectionAddress: owned.card.collectionAddress ?? null,
+      mintOrAssetAddress: mintOrAssetAddress ?? "",
+      collectionAddress: owned.card.collectionAddress ?? "",
       blockedReason,
     };
   });
 
   return {
-    auctions: rawAuctions.map((item) => toListingDto(item, input.userId, nowMs)),
+    auctions: paginated.items.map((item) => toListingDto(item, input.userId, nowMs)),
+    pagination: {
+      page: paginated.page,
+      pageSize: paginated.pageSize,
+      totalItems: paginated.totalItems,
+      totalPages: paginated.totalPages,
+    },
     walletAddress,
     walletNusaBalance: tokenBalances ? Math.floor(tokenBalances.nusa) : 0,
     frozenNusaTotal,
@@ -390,7 +402,7 @@ export async function getAuctionDetailUseCase(input: {
 }): Promise<AuctionDetailDto> {
   const existing = await findAuctionById(input.auctionId);
   if (!existing) {
-    throw AppError.notFound("Lelang tidak ditemukan.");
+    throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   }
   const latest = await tryAutoSettleAuction(existing);
   return toDetailDto(latest, input.userId);
@@ -412,25 +424,19 @@ export async function prepareCreateAuctionUseCase(input: {
     !Number.isInteger(input.startingPrice) ||
     input.startingPrice < AUCTION_POLICY.minStartingPriceNusa
   ) {
-    throw AppError.badRequest(
-      `Harga awal minimal ${AUCTION_POLICY.minStartingPriceNusa} NUSA (bilangan bulat).`
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_STARTING_PRICE);
   }
   if (
     !Number.isInteger(input.durationHours) ||
     input.durationHours < AUCTION_POLICY.minDurationHours ||
     input.durationHours > AUCTION_POLICY.maxDurationHours
   ) {
-    throw AppError.badRequest(
-      `Durasi lelang harus antara ${AUCTION_POLICY.minDurationHours} hingga ${AUCTION_POLICY.maxDurationHours} jam.`
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_DURATION);
   }
 
   const activeCount = await countActiveAuctionsBySeller(input.userId);
   if (activeCount >= AUCTION_POLICY.maxActiveListingsPerUser) {
-    throw AppError.conflict(
-      `Maksimal ${AUCTION_POLICY.maxActiveListingsPerUser} lelang aktif secara bersamaan.`
-    );
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.MAX_ACTIVE_LISTINGS);
   }
 
   const [ownedCards, deckUsageMap] = await Promise.all([
@@ -440,31 +446,25 @@ export async function prepareCreateAuctionUseCase(input: {
 
   const owned = ownedCards.find((item) => item.card.id === input.cardId);
   if (!owned) {
-    throw AppError.badRequest("Anda tidak memiliki kartu ini di dompet Solana.");
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.CARD_NOT_OWNED);
   }
   if (owned.card.publicationStatus !== "ACTIVE") {
-    throw AppError.badRequest("Kartu ini tidak aktif dan tidak dapat dilelang.");
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.CARD_INACTIVE);
   }
   if (owned.card.isCustom && owned.card.customStatus !== "APPROVED") {
-    throw AppError.badRequest(
-      "Kartu kustom harus disetujui admin terlebih dahulu sebelum dilelang."
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.CUSTOM_CARD_NOT_APPROVED);
   }
 
   const walletQty = owned.walletQuantity ?? owned.quantity;
   const inDeckQty = deckUsageMap.get(owned.card.id) ?? 0;
   if (walletQty <= inDeckQty) {
-    throw AppError.conflict(
-      "Kartu ini sedang dipakai di Deck Anda. Keluarkan kartu dari Deck terlebih dahulu sebelum melelang."
-    );
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.CARD_IN_DECK);
   }
 
   const cardMintOrAsset =
     owned.mintOrAssetAddresses?.[0] ?? owned.card.mintAddress ?? null;
   if (!cardMintOrAsset) {
-    throw AppError.badRequest(
-      "Kartu belum memiliki mint/asset address on-chain di Solana."
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.CARD_NO_ONCHAIN_MINT);
   }
 
   const tokenStandard =
@@ -489,7 +489,7 @@ export async function prepareCreateAuctionUseCase(input: {
     cardId: owned.card.id,
     cardMintOrAsset,
     tokenStandard,
-    collectionAddress: owned.card.collectionAddress ?? null,
+    collectionAddress: owned.card.collectionAddress ?? "",
     startingPrice: input.startingPrice,
     durationHours: input.durationHours,
     serializedTransaction: txData.serializedTransaction,
@@ -533,7 +533,7 @@ export async function confirmCreateAuctionUseCase(input: {
     cardId: input.cardId,
     cardMintOrAsset: input.cardMintOrAsset,
     tokenStandard: input.tokenStandard,
-    collectionAddress: input.collectionAddress ?? null,
+    collectionAddress: input.collectionAddress?.trim() || null,
     auctionPda: auctionPda.toBase58(),
     startingPrice: input.startingPrice,
     bidIncrement: AUCTION_POLICY.minBidIncrementNusa,
@@ -559,42 +559,34 @@ export async function prepareUpdateAuctionUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   if (auction.sellerId !== input.userId) {
-    throw AppError.forbidden("Hanya pemilik lelang yang dapat mengedit lelang ini.");
+    throw AppError.forbidden(AUCTION_MESSAGE_KEYS.SELLER_ONLY_EDIT);
   }
   if (auction.status !== "ACTIVE" || Date.now() >= auction.endsAt.getTime()) {
-    throw AppError.conflict("Lelang sudah tidak aktif.");
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.AUCTION_NOT_ACTIVE);
   }
   if (auction.bidCount > 0) {
-    throw AppError.conflict(
-      "Lelang tidak dapat diedit karena sudah ada peserta yang melakukan bid."
-    );
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.LOCKED_EDIT_HAS_BIDS);
   }
   if (
     !Number.isInteger(input.startingPrice) ||
     input.startingPrice < AUCTION_POLICY.minStartingPriceNusa
   ) {
-    throw AppError.badRequest(
-      `Harga awal minimal ${AUCTION_POLICY.minStartingPriceNusa} NUSA.`
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_STARTING_PRICE);
   }
   if (
     !Number.isInteger(input.durationHours) ||
     input.durationHours < AUCTION_POLICY.minDurationHours ||
     input.durationHours > AUCTION_POLICY.maxDurationHours
   ) {
-    throw AppError.badRequest(
-      `Durasi lelang harus antara ${AUCTION_POLICY.minDurationHours} hingga ${AUCTION_POLICY.maxDurationHours} jam.`
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_DURATION);
   }
 
   const newEndsAtMs =
     auction.startsAt.getTime() + input.durationHours * 3600 * 1000;
   if (newEndsAtMs <= Date.now()) {
-    throw AppError.badRequest(
-      "Durasi baru harus menghasilkan waktu akhir di masa depan."
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_END_TIME);
   }
 
   const txData = await buildUpdateAuctionTransaction({
@@ -625,12 +617,12 @@ export async function confirmUpdateAuctionUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   if (auction.sellerId !== input.userId) {
-    throw AppError.forbidden("Hanya pemilik lelang yang dapat mengedit lelang ini.");
+    throw AppError.forbidden(AUCTION_MESSAGE_KEYS.SELLER_ONLY_EDIT);
   }
   if (auction.bidCount > 0) {
-    throw AppError.conflict("Lelang sudah memiliki penawar.");
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.LOCKED_EDIT_HAS_BIDS);
   }
 
   await verifyAuctionProgramTransaction({
@@ -662,17 +654,15 @@ export async function prepareCancelAuctionUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   if (auction.sellerId !== input.userId) {
-    throw AppError.forbidden("Hanya pemilik lelang yang dapat membatalkan lelang.");
+    throw AppError.forbidden(AUCTION_MESSAGE_KEYS.SELLER_ONLY_CANCEL);
   }
   if (auction.status !== "ACTIVE") {
-    throw AppError.conflict("Lelang sudah tidak aktif.");
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.AUCTION_NOT_ACTIVE);
   }
   if (auction.bidCount > 0) {
-    throw AppError.conflict(
-      "Lelang tidak dapat dihapus karena sudah ada peserta yang melakukan bid."
-    );
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.LOCKED_CANCEL_HAS_BIDS);
   }
 
   const txData = await buildCancelAuctionTransaction({
@@ -700,9 +690,9 @@ export async function confirmCancelAuctionUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   if (auction.sellerId !== input.userId) {
-    throw AppError.forbidden("Hanya pemilik lelang yang dapat membatalkan lelang.");
+    throw AppError.forbidden(AUCTION_MESSAGE_KEYS.SELLER_ONLY_CANCEL);
   }
 
   await verifyAuctionProgramTransaction({
@@ -730,20 +720,18 @@ export async function preparePlaceBidUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   if (auction.status !== "ACTIVE" || Date.now() >= auction.endsAt.getTime()) {
-    throw AppError.conflict("Lelang sudah berakhir atau tidak aktif.");
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.AUCTION_ENDED);
   }
   if (auction.sellerId === input.userId) {
-    throw AppError.forbidden("Pemilik lelang tidak dapat menawar kartunya sendiri.");
+    throw AppError.forbidden(AUCTION_MESSAGE_KEYS.SELLER_CANNOT_BID);
   }
   if (auction.highestBidderId === input.userId) {
-    throw AppError.conflict(
-      "Anda sudah menjadi penawar tertinggi saat ini. Tunggu penawar lain sebelum menaikkan bid."
-    );
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.ALREADY_HIGHEST_BIDDER);
   }
   if (!Number.isInteger(input.amount) || input.amount <= 0) {
-    throw AppError.badRequest("Nominal bid harus berupa bilangan bulat NUSA.");
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INVALID_BID_AMOUNT);
   }
 
   const minRequired = computeMinNextBid(
@@ -753,23 +741,18 @@ export async function preparePlaceBidUseCase(input: {
     auction.bidIncrement
   );
   if (input.amount < minRequired) {
-    throw AppError.badRequest(
-      `Nominal bid minimal adalah ${minRequired} NUSA (+${auction.bidIncrement} NUSA).`
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.BID_TOO_LOW);
   }
 
   const alreadyHeld = getUserHeldAmountOnAuction(auction, input.userId);
   const deltaAmount = input.amount - alreadyHeld;
   if (deltaAmount <= 0) {
-    throw AppError.badRequest("Nominal bid harus lebih besar dari saldo yang sudah Anda tahan.");
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.BID_BELOW_HELD);
   }
 
-  // Verify bidder has sufficient NUSA balance on-chain before preparing tx.
   const balances = await getWalletTokenBalances(bidderWallet);
   if (balances.nusa < deltaAmount) {
-    throw AppError.badRequest(
-      `Saldo NUSA Anda tidak mencukupi. Dibutuhkan ${deltaAmount} NUSA untuk dibekukan, saldo tersedia ${Math.floor(balances.nusa)} NUSA.`
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.INSUFFICIENT_NUSA_BALANCE);
   }
 
   const txData = await buildPlaceBidTransaction({
@@ -803,7 +786,7 @@ export async function confirmPlaceBidUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
 
   await verifyAuctionProgramTransaction({
     txSignature: input.txSignature,
@@ -843,12 +826,12 @@ export async function prepareSettleAuctionUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   if (auction.status !== "ACTIVE") {
-    throw AppError.conflict("Lelang sudah diselesaikan.");
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.ALREADY_SETTLED);
   }
   if (Date.now() < auction.endsAt.getTime()) {
-    throw AppError.badRequest("Lelang masih berjalan dan belum dapat diselesaikan.");
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.STILL_RUNNING_SETTLE);
   }
 
   const hasWinner = auction.bidCount > 0 && Boolean(auction.highestBidderWallet);
@@ -885,7 +868,7 @@ export async function confirmSettleAuctionUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
 
   await verifyAuctionProgramTransaction({
     txSignature: input.txSignature,
@@ -920,22 +903,20 @@ export async function prepareRefundBidUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
 
   const isEnded =
     auction.status !== "ACTIVE" || Date.now() >= auction.endsAt.getTime();
   if (!isEnded) {
-    throw AppError.badRequest(
-      "Dana yang dibekukan baru dapat dikembalikan setelah lelang berakhir."
-    );
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.STILL_RUNNING_REFUND);
   }
   if (auction.highestBidderId === input.userId) {
-    throw AppError.conflict("Pemenang lelang tidak dapat mengklaim refund bid.");
+    throw AppError.conflict(AUCTION_MESSAGE_KEYS.WINNER_CANNOT_REFUND);
   }
 
   const held = getUserHeldAmountOnAuction(auction, input.userId);
   if (held <= 0) {
-    throw AppError.badRequest("Tidak ada saldo NUSA dibekukan yang perlu dikembalikan.");
+    throw AppError.badRequest(AUCTION_MESSAGE_KEYS.NOTHING_TO_REFUND);
   }
 
   const txData = await buildUserRefundBidTransaction({
@@ -962,7 +943,7 @@ export async function confirmRefundBidUseCase(input: {
     input.sessionWallet
   );
   const auction = await findAuctionById(input.auctionId);
-  if (!auction) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!auction) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
 
   await verifyAuctionProgramTransaction({
     txSignature: input.txSignature,
@@ -977,6 +958,6 @@ export async function confirmRefundBidUseCase(input: {
   });
 
   const refreshed = await findAuctionById(auction.id);
-  if (!refreshed) throw AppError.notFound("Lelang tidak ditemukan.");
+  if (!refreshed) throw AppError.notFound(AUCTION_MESSAGE_KEYS.NOT_FOUND);
   return toDetailDto(refreshed, input.userId);
 }

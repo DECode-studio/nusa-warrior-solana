@@ -11,13 +11,10 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useTranslator } from "@/core/translator";
-import type {
-  AuctionSort,
-  AuctionTab,
-} from "@/client/domain/auction/entity/auction_entity";
+import { Pagination } from "@/client/presentation/components/ui/Pagination";
+import type { AuctionSort } from "@/client/domain/auction/entity/auction_entity";
 import { AUCTION_SEMANTIC_IDS } from "./constants/SemanticIdConstant";
-import { getAuctionCopy } from "./constants/TextConstant";
+import { AUCTION_TEXT_CONSTANT } from "./constants/TextConstant";
 import { useAuction } from "./hooks/useAuction";
 import {
   AuctionCardItem,
@@ -37,31 +34,8 @@ const KINGDOM_OPTIONS = [
 ] as const;
 
 export function UserAuctionView(): React.ReactElement {
-  const { locale } = useTranslator();
-  const copy = getAuctionCopy(locale);
   const vm = useAuction();
-
-  const tabs: Array<{ key: AuctionTab; label: string; id: string }> = [
-    { key: "explore", label: copy.tabs.explore, id: AUCTION_SEMANTIC_IDS.tabExplore },
-    { key: "selling", label: copy.tabs.selling, id: AUCTION_SEMANTIC_IDS.tabSelling },
-    { key: "bidding", label: copy.tabs.bidding, id: AUCTION_SEMANTIC_IDS.tabBidding },
-    { key: "history", label: copy.tabs.history, id: AUCTION_SEMANTIC_IDS.tabHistory },
-  ];
-
-  const auctions = vm.listData?.auctions ?? [];
-  const availableNusa = vm.listData?.walletNusaBalance ?? 0;
-  const frozenNusa = vm.listData?.frozenNusaTotal ?? 0;
-  const activeSelling = vm.listData?.activeSellingCount ?? 0;
-  const maxSelling = vm.listData?.maxActiveListings ?? 5;
-
-  const emptyState =
-    vm.tab === "explore"
-      ? { title: copy.emptyExploreTitle, desc: copy.emptyExploreDesc }
-      : vm.tab === "selling"
-        ? { title: copy.emptySellingTitle, desc: copy.emptySellingDesc }
-        : vm.tab === "bidding"
-          ? { title: copy.emptyBiddingTitle, desc: copy.emptyBiddingDesc }
-          : { title: copy.emptyHistoryTitle, desc: copy.emptyHistoryDesc };
+  const { t } = vm;
 
   return (
     <div
@@ -74,10 +48,10 @@ export function UserAuctionView(): React.ReactElement {
             id={AUCTION_SEMANTIC_IDS.headerTitle}
             className="font-display text-3xl font-bold text-fg sm:text-4xl"
           >
-            {copy.title}
+            {t(AUCTION_TEXT_CONSTANT.TITLE)}
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-muted sm:text-base">
-            {copy.subtitle}
+            {t(AUCTION_TEXT_CONSTANT.SUBTITLE)}
           </p>
         </div>
 
@@ -87,7 +61,7 @@ export function UserAuctionView(): React.ReactElement {
             onClick={() => void vm.loadAuctions()}
             disabled={vm.isLoading}
             className="nc-btn-secondary"
-            aria-label="Refresh"
+            aria-label={t(AUCTION_TEXT_CONSTANT.REFRESH_LABEL)}
           >
             <RefreshCw
               className={`h-4 w-4 ${vm.isLoading ? "animate-spin" : ""}`}
@@ -96,12 +70,12 @@ export function UserAuctionView(): React.ReactElement {
           <button
             id={AUCTION_SEMANTIC_IDS.createButton}
             type="button"
-            disabled={!vm.walletConnected || activeSelling >= maxSelling}
-            onClick={() => vm.setIsCreateModalOpen(true)}
+            disabled={!vm.walletConnected || vm.activeSelling >= vm.maxSelling}
+            onClick={vm.openCreateModal}
             className="nc-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            {copy.createAuction}
+            {t(AUCTION_TEXT_CONSTANT.CREATE_AUCTION)}
           </button>
         </div>
       </header>
@@ -112,9 +86,11 @@ export function UserAuctionView(): React.ReactElement {
             <Coins className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-subtle">{copy.availableBalanceLabel}</p>
+            <p className="text-xs text-subtle">
+              {t(AUCTION_TEXT_CONSTANT.AVAILABLE_BALANCE_LABEL)}
+            </p>
             <p className="font-display text-2xl font-bold text-fg">
-              {availableNusa.toLocaleString()} NUSA
+              {vm.availableNusa.toLocaleString()} NUSA
             </p>
           </div>
         </div>
@@ -124,9 +100,11 @@ export function UserAuctionView(): React.ReactElement {
             <Lock className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-subtle">{copy.frozenBalanceLabel}</p>
+            <p className="text-xs text-subtle">
+              {t(AUCTION_TEXT_CONSTANT.FROZEN_BALANCE_LABEL)}
+            </p>
             <p className="font-display text-2xl font-bold text-amber">
-              {frozenNusa.toLocaleString()} NUSA
+              {vm.frozenNusa.toLocaleString()} NUSA
             </p>
           </div>
         </div>
@@ -136,9 +114,11 @@ export function UserAuctionView(): React.ReactElement {
             <Gavel className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-subtle">{copy.activeListingsLabel}</p>
+            <p className="text-xs text-subtle">
+              {t(AUCTION_TEXT_CONSTANT.ACTIVE_LISTINGS_LABEL)}
+            </p>
             <p className="font-display text-2xl font-bold text-fg">
-              {activeSelling} / {maxSelling}
+              {vm.activeSelling} / {vm.maxSelling}
             </p>
           </div>
         </div>
@@ -147,7 +127,7 @@ export function UserAuctionView(): React.ReactElement {
       {!vm.walletConnected && (
         <div className="flex items-center gap-2.5 rounded-xl border border-amber/40 bg-amber/10 p-4 text-sm text-amber-light">
           <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>{copy.walletRequired}</span>
+          <span>{t(AUCTION_TEXT_CONSTANT.WALLET_REQUIRED)}</span>
         </div>
       )}
 
@@ -159,10 +139,10 @@ export function UserAuctionView(): React.ReactElement {
           </div>
           <button
             type="button"
-            onClick={() => vm.setErrorMessage(null)}
+            onClick={vm.clearError}
             className="text-xs font-semibold underline"
           >
-            Tutup
+            {t(AUCTION_TEXT_CONSTANT.CLOSE_BUTTON_LABEL)}
           </button>
         </div>
       )}
@@ -175,24 +155,23 @@ export function UserAuctionView(): React.ReactElement {
           </div>
           <button
             type="button"
-            onClick={() => vm.setStatusMessage(null)}
+            onClick={vm.clearStatus}
             className="text-xs font-semibold underline"
           >
-            Tutup
+            {t(AUCTION_TEXT_CONSTANT.CLOSE_BUTTON_LABEL)}
           </button>
         </div>
       )}
 
       <AuctionFrozenBanner
-        frozenTotal={frozenNusa}
-        items={vm.listData?.frozenAuctions ?? []}
-        copy={copy}
-        onOpenAuction={(id) => void vm.openDetail(id)}
+        frozenTotal={vm.frozenNusa}
+        items={vm.frozenAuctions}
+        onOpenAuction={vm.openDetail}
       />
 
       <section className="space-y-4">
         <div className="flex flex-wrap gap-2" role="tablist">
-          {tabs.map((item) => {
+          {vm.tabs.map((item) => {
             const active = vm.tab === item.key;
             return (
               <button
@@ -225,7 +204,7 @@ export function UserAuctionView(): React.ReactElement {
               type="search"
               value={vm.search}
               onChange={(e) => vm.setSearch(e.target.value)}
-              placeholder={copy.searchPlaceholder}
+              placeholder={t(AUCTION_TEXT_CONSTANT.SEARCH_PLACEHOLDER)}
               className="w-full bg-transparent text-fg placeholder:text-subtle focus:outline-none"
             />
           </div>
@@ -236,7 +215,7 @@ export function UserAuctionView(): React.ReactElement {
             onChange={(e) => vm.setKingdom(e.target.value)}
             className="nc-input"
           >
-            <option value="">{copy.allKingdoms}</option>
+            <option value="">{t(AUCTION_TEXT_CONSTANT.ALL_KINGDOMS)}</option>
             {KINGDOM_OPTIONS.map((k) => (
               <option key={k} value={k}>
                 {k.replace("_", " ")}
@@ -250,11 +229,21 @@ export function UserAuctionView(): React.ReactElement {
             onChange={(e) => vm.setSort(e.target.value as AuctionSort)}
             className="nc-input"
           >
-            <option value="ending_soon">{copy.sortOptions.ending_soon}</option>
-            <option value="price_asc">{copy.sortOptions.price_asc}</option>
-            <option value="price_desc">{copy.sortOptions.price_desc}</option>
-            <option value="most_bids">{copy.sortOptions.most_bids}</option>
-            <option value="newest">{copy.sortOptions.newest}</option>
+            <option value="ending_soon">
+              {t(AUCTION_TEXT_CONSTANT.SORT_ENDING_SOON)}
+            </option>
+            <option value="price_asc">
+              {t(AUCTION_TEXT_CONSTANT.SORT_PRICE_ASC)}
+            </option>
+            <option value="price_desc">
+              {t(AUCTION_TEXT_CONSTANT.SORT_PRICE_DESC)}
+            </option>
+            <option value="most_bids">
+              {t(AUCTION_TEXT_CONSTANT.SORT_MOST_BIDS)}
+            </option>
+            <option value="newest">
+              {t(AUCTION_TEXT_CONSTANT.SORT_NEWEST)}
+            </option>
           </select>
         </div>
       </section>
@@ -262,83 +251,72 @@ export function UserAuctionView(): React.ReactElement {
       {vm.isLoading ? (
         <div className="nc-panel flex flex-col items-center justify-center gap-3 p-10 text-center">
           <RefreshCw className="h-6 w-6 animate-spin text-primary-light" />
-          <p className="text-sm text-muted">{copy.loadingText}</p>
+          <p className="text-sm text-muted">
+            {t(AUCTION_TEXT_CONSTANT.LOADING_TEXT)}
+          </p>
         </div>
-      ) : auctions.length === 0 ? (
+      ) : vm.auctions.length === 0 ? (
         <div className="nc-panel flex flex-col items-center justify-center gap-3 p-10 text-center">
           <Gavel className="h-8 w-8 text-subtle" aria-hidden="true" />
           <h2 className="font-display text-xl font-bold text-fg">
-            {emptyState.title}
+            {vm.emptyState.title}
           </h2>
-          <p className="max-w-md text-sm text-muted">{emptyState.desc}</p>
+          <p className="max-w-md text-sm text-muted">{vm.emptyState.desc}</p>
           {vm.tab !== "history" && vm.walletConnected && (
             <button
               type="button"
-              onClick={() => vm.setIsCreateModalOpen(true)}
+              onClick={vm.openCreateModal}
               className="nc-btn-primary mt-2"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              {copy.createAuction}
+              {t(AUCTION_TEXT_CONSTANT.CREATE_AUCTION)}
             </button>
           )}
         </div>
       ) : (
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {auctions.map((auction) => (
-            <AuctionCardItem
-              key={auction.id}
-              auction={auction}
-              copy={copy}
-              onSelect={(id) => void vm.openDetail(id)}
+        <div className="space-y-4">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {vm.auctions.map((auction) => (
+              <AuctionCardItem
+                key={auction.id}
+                auction={auction}
+                countdown={vm.getCountdown(auction.endsAt)}
+                onSelect={vm.openDetail}
+              />
+            ))}
+          </section>
+
+          {vm.pagination && (
+            <Pagination
+              id="user-auction-pagination"
+              currentPage={vm.pagination.page}
+              totalPages={vm.pagination.totalPages}
+              totalItems={vm.pagination.totalItems}
+              pageSize={vm.pagination.pageSize}
+              onPageChange={vm.setPage}
             />
-          ))}
-        </section>
+          )}
+        </div>
       )}
 
-      {vm.isCreateModalOpen && (
+      {(vm.isCreateModalOpen || vm.editingAuction) && (
         <AuctionCreateEditModal
-          mode="create"
-          locale={locale}
-          copy={copy}
-          sellableCards={vm.listData?.sellableCards ?? []}
-          editingAuction={null}
-          isSubmitting={vm.isSubmitting}
-          onClose={() => vm.setIsCreateModalOpen(false)}
-          onSubmitCreate={vm.createAuction}
-          onSubmitEdit={vm.editAuction}
-        />
-      )}
-
-      {vm.editingAuction && (
-        <AuctionCreateEditModal
-          mode="edit"
-          locale={locale}
-          copy={copy}
-          sellableCards={vm.listData?.sellableCards ?? []}
+          mode={vm.editingAuction ? "edit" : "create"}
+          sellableCards={vm.sellableCards}
           editingAuction={vm.editingAuction}
-          isSubmitting={vm.isSubmitting}
-          onClose={() => vm.setEditingAuction(null)}
-          onSubmitCreate={vm.createAuction}
-          onSubmitEdit={vm.editAuction}
+          onClose={vm.closeFormModal}
+          onSuccess={vm.handleMutationSuccess}
         />
       )}
 
-      {vm.selectedDetail && !vm.isLoadingDetail && (
+      {vm.activeDetailId && (
         <AuctionDetailModal
-          detail={vm.selectedDetail}
-          locale={locale}
-          copy={copy}
-          walletNusaBalance={availableNusa}
-          isSubmitting={vm.isSubmitting}
+          auctionId={vm.activeDetailId}
+          getCountdown={vm.getCountdown}
+          walletNusaBalance={vm.availableNusa}
           onClose={vm.closeDetail}
-          onPlaceBid={vm.placeBid}
-          onOpenEdit={(detail) => {
-            vm.closeDetail();
-            vm.setEditingAuction(detail);
-          }}
-          onCancelAuction={vm.cancelAuction}
-          onSettleAuction={vm.settleAuction}
-          onClaimRefund={vm.claimRefund}
+          onOpenEdit={vm.openEditModal}
+          onMutated={vm.handleMutationSuccess}
         />
       )}
     </div>

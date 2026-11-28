@@ -43,6 +43,14 @@ export type AuctionWithRelations = Prisma.AuctionListingGetPayload<{
   include: typeof auctionInclude;
 }>;
 
+export interface PaginatedAuctionsResult {
+  items: AuctionWithRelations[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export async function findAuctions(input: {
   tab: "explore" | "selling" | "bidding" | "history";
   userId: string;
@@ -50,8 +58,13 @@ export async function findAuctions(input: {
   cardType?: CardType;
   search?: string;
   sort?: "ending_soon" | "price_asc" | "price_desc" | "most_bids" | "newest";
-}): Promise<AuctionWithRelations[]> {
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedAuctionsResult> {
   requirePrisma();
+
+  const pageSize = Math.min(10, Math.max(1, Math.trunc(input.pageSize ?? 10)));
+  const requestedPage = Math.max(1, Math.trunc(input.page ?? 1));
 
   const where: Prisma.AuctionListingWhereInput = { deletedAt: null };
   if (input.tab === "explore") {
@@ -87,12 +100,25 @@ export async function findAuctions(input: {
     orderBy = [{ createdAt: "desc" }];
   }
 
-  return prisma.auctionListing.findMany({
+  const totalItems = await prisma.auctionListing.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+
+  const items = await prisma.auctionListing.findMany({
     where,
     include: auctionInclude,
     orderBy,
-    take: 60,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
+
+  return {
+    items,
+    totalItems,
+    page,
+    pageSize,
+    totalPages,
+  };
 }
 
 export async function findAuctionById(

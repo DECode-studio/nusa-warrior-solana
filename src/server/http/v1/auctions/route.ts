@@ -16,6 +16,8 @@ const listQuerySchema = z.object({
   sort: z
     .enum(["ending_soon", "price_asc", "price_desc", "most_bids", "newest"])
     .default("ending_soon"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(10).default(10),
 });
 
 const confirmCreateSchema = z.object({
@@ -23,7 +25,7 @@ const confirmCreateSchema = z.object({
   cardId: z.string().trim().min(1),
   cardMintOrAsset: z.string().trim().min(32).max(64),
   tokenStandard: z.enum(["TOKEN_2022", "MPL_CORE"]),
-  collectionAddress: z.string().trim().nullable().optional(),
+  collectionAddress: z.string().trim().default(""),
   startingPrice: z.number().int().min(50),
   durationHours: z.number().int().min(1).max(24),
   txSignature: z.string().trim().min(32).max(128),
@@ -39,6 +41,8 @@ export async function GET(request: Request) {
       cardType: url.searchParams.get("cardType") || undefined,
       search: url.searchParams.get("search") || undefined,
       sort: url.searchParams.get("sort") ?? undefined,
+      page: url.searchParams.get("page") ?? undefined,
+      pageSize: url.searchParams.get("pageSize") ?? undefined,
     });
 
     const data = await listAuctionsUseCase({

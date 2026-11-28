@@ -24,6 +24,8 @@ export class AuctionRemoteDataSource {
       cardType: query.cardType || undefined,
       search: query.search || undefined,
       sort: query.sort || undefined,
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 10,
     });
   }
 
@@ -51,7 +53,7 @@ export class AuctionRemoteDataSource {
     cardId: string;
     cardMintOrAsset: string;
     tokenStandard: AuctionTokenStandard;
-    collectionAddress?: string | null;
+    collectionAddress: string;
     startingPrice: number;
     durationHours: number;
     txSignature: string;

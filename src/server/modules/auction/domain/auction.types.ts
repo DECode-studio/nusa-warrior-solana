@@ -15,6 +15,8 @@ export const AUCTION_POLICY = {
   feeBps: 1000,
   feePercent: 10,
   maxActiveListingsPerUser: 5,
+  defaultPageSize: 10,
+  maxPageSize: 10,
   antiSnipeWindowSecs: 300,
   antiSnipeExtensionSecs: 300,
   antiSnipeMaxExtensionSecs: 1800,
@@ -160,13 +162,21 @@ export interface SellableCardOptionDto {
   walletQuantity: number;
   inDeckQuantity: number;
   availableForAuction: number;
-  mintOrAssetAddress: string | null;
-  collectionAddress: string | null;
+  mintOrAssetAddress: string;
+  collectionAddress: string;
   blockedReason: string | null;
+}
+
+export interface AuctionPaginationDto {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
 }
 
 export interface AuctionListResponseDto {
   auctions: AuctionListingDto[];
+  pagination: AuctionPaginationDto;
   walletAddress: string | null;
   walletNusaBalance: number;
   frozenNusaTotal: number;

@@ -44,7 +44,7 @@ export class AuctionUseCase {
     cardId: string;
     cardMintOrAsset: string;
     tokenStandard: AuctionTokenStandard;
-    collectionAddress?: string | null;
+    collectionAddress: string;
     startingPrice: number;
     durationHours: number;
     txSignature: string;

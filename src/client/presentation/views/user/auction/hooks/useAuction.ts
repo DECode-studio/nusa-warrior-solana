@@ -1,411 +1,260 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { getService } from "@/core/di/container";
-import { AUCTION_USECASE_TOKEN } from "@/core/di/tokens";
-import { sendBase64SolanaTx } from "@/core/utils/solana-tx-client";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useTranslator } from "@/core/translator";
 import type {
-  AuctionDetailEntity,
-  AuctionListEntity,
   AuctionListingEntity,
   AuctionSort,
   AuctionTab,
 } from "@/client/domain/auction/entity/auction_entity";
+import type { AuctionListQuery } from "@/client/domain/auction/repository/auction_repository";
+import { AUCTION_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
+import { AUCTION_TEXT_CONSTANT } from "../constants/TextConstant";
+import { useAuctionQuery } from "./useAuctionQuery";
+import { useDebouncedValue } from "./useDebouncedValue";
+
+export interface AuctionCountdownState {
+  readonly label: string;
+  readonly isEnded: boolean;
+  readonly isUrgent: boolean;
+  readonly isCritical: boolean;
+}
+
+const AUCTION_PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 350;
 
 export function useAuction() {
-  const auctionUseCase = useMemo(() => getService(AUCTION_USECASE_TOKEN), []);
-  const { connection } = useConnection();
-  const { publicKey, signTransaction, sendTransaction } = useWallet();
+  const { locale, t } = useTranslator();
+  const { publicKey } = useWallet();
 
-  const [tab, setTab] = useState<AuctionTab>("explore");
-  const [kingdom, setKingdom] = useState<string>("");
-  const [search, setSearch] = useState<string>("");
-  const [sort, setSort] = useState<AuctionSort>("ending_soon");
+  const [tab, setTabState] = useState<AuctionTab>("explore");
+  const [kingdom, setKingdomState] = useState<string>("");
+  const [search, setSearchState] = useState<string>("");
+  const [sort, setSortState] = useState<AuctionSort>("ending_soon");
+  const [page, setPage] = useState<number>(1);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
-  const [listData, setListData] = useState<AuctionListEntity | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
 
-  const [selectedDetail, setSelectedDetail] =
-    useState<AuctionDetailEntity | null>(null);
-  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
-
+  const [activeDetailId, setActiveDetailId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [editingAuction, setEditingAuction] =
     useState<AuctionListingEntity | null>(null);
 
-  const loadAuctions = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await auctionUseCase.listAuctions({
-        tab,
-        kingdom: kingdom || undefined,
-        search: search.trim() || undefined,
-        sort,
-      });
-      setListData(data);
-    } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Gagal memuat data lelang."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [auctionUseCase, tab, kingdom, search, sort]);
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
-  useEffect(() => {
-    void loadAuctions();
-  }, [loadAuctions]);
-
-  const openDetail = useCallback(
-    async (auctionId: string) => {
-      setIsLoadingDetail(true);
-      setErrorMessage(null);
-      try {
-        const detail = await auctionUseCase.getAuctionDetail(auctionId);
-        setSelectedDetail(detail);
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal memuat detail lelang."
-        );
-      } finally {
-        setIsLoadingDetail(false);
-      }
-    },
-    [auctionUseCase]
-  );
-
-  const closeDetail = useCallback(() => {
-    setSelectedDetail(null);
+  const setTab = useCallback((next: AuctionTab) => {
+    setTabState(next);
+    setPage(1);
   }, []);
 
-  const createAuction = useCallback(
-    async (input: {
-      cardId: string;
-      startingPrice: number;
-      durationHours: number;
-    }): Promise<boolean> => {
-      if (!publicKey) {
-        setErrorMessage("Hubungkan dompet Solana terlebih dahulu.");
-        return false;
-      }
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-      try {
-        const prepared = await auctionUseCase.prepareCreateAuction(input);
-        const txSignature = await sendBase64SolanaTx({
-          serializedTransaction: prepared.serializedTransaction,
-          connection,
-          signTransaction,
-          sendTransaction,
-        });
-        await auctionUseCase.confirmCreateAuction({
-          auctionId: prepared.auctionId,
-          cardId: prepared.cardId,
-          cardMintOrAsset: prepared.cardMintOrAsset,
-          tokenStandard: prepared.tokenStandard,
-          collectionAddress: prepared.collectionAddress,
-          startingPrice: prepared.startingPrice,
-          durationHours: prepared.durationHours,
-          txSignature,
-        });
-        setStatusMessage("Lelang kartu berhasil diposting ke blockchain Solana.");
-        setIsCreateModalOpen(false);
-        await loadAuctions();
-        return true;
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal membuat lelang kartu."
-        );
-        return false;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      auctionUseCase,
-      connection,
-      loadAuctions,
-      publicKey,
-      sendTransaction,
-      signTransaction,
-    ]
+  const setKingdom = useCallback((next: string) => {
+    setKingdomState(next);
+    setPage(1);
+  }, []);
+
+  const setSearch = useCallback((next: string) => {
+    setSearchState(next);
+    setPage(1);
+  }, []);
+
+  const setSort = useCallback((next: AuctionSort) => {
+    setSortState(next);
+    setPage(1);
+  }, []);
+
+  const query = useMemo<AuctionListQuery>(
+    () => ({
+      tab,
+      kingdom: kingdom || undefined,
+      search: debouncedSearch.trim() || undefined,
+      sort,
+      page,
+      pageSize: AUCTION_PAGE_SIZE,
+    }),
+    [tab, kingdom, debouncedSearch, sort, page]
   );
 
-  const editAuction = useCallback(
-    async (input: {
-      auctionId: string;
-      startingPrice: number;
-      durationHours: number;
-    }): Promise<boolean> => {
-      if (!publicKey) {
-        setErrorMessage("Hubungkan dompet Solana terlebih dahulu.");
-        return false;
+  const {
+    data: listData,
+    isLoading,
+    error: queryError,
+    refetch: loadAuctions,
+  } = useAuctionQuery(query, t(AUCTION_TEXT_CONSTANT.ERROR_LOAD_AUCTIONS));
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getCountdown = useCallback(
+    (endsAtIso: string): AuctionCountdownState => {
+      const diffSec = Math.floor((Date.parse(endsAtIso) - nowMs) / 1000);
+      if (diffSec <= 0) {
+        return {
+          label: "00:00:00",
+          isEnded: true,
+          isUrgent: false,
+          isCritical: false,
+        };
       }
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-      try {
-        const prepared = await auctionUseCase.prepareEditAuction(input);
-        const txSignature = await sendBase64SolanaTx({
-          serializedTransaction: prepared.serializedTransaction,
-          connection,
-          signTransaction,
-          sendTransaction,
-        });
-        await auctionUseCase.confirmEditAuction({
-          auctionId: input.auctionId,
-          startingPrice: input.startingPrice,
-          durationHours: input.durationHours,
-          txSignature,
-        });
-        setStatusMessage("Perubahan lelang berhasil disimpan on-chain.");
-        setEditingAuction(null);
-        await loadAuctions();
-        if (selectedDetail?.id === input.auctionId) {
-          await openDetail(input.auctionId);
-        }
-        return true;
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal mengedit lelang."
-        );
-        return false;
-      } finally {
-        setIsSubmitting(false);
-      }
+      const hours = Math.floor(diffSec / 3600);
+      const mins = Math.floor((diffSec % 3600) / 60);
+      const secs = diffSec % 60;
+      const pad = (v: number) => String(v).padStart(2, "0");
+      return {
+        label: `${pad(hours)}:${pad(mins)}:${pad(secs)}`,
+        isEnded: false,
+        isUrgent: diffSec <= 3600,
+        isCritical: diffSec <= 300,
+      };
     },
-    [
-      auctionUseCase,
-      connection,
-      loadAuctions,
-      openDetail,
-      publicKey,
-      selectedDetail?.id,
-      sendTransaction,
-      signTransaction,
-    ]
+    [nowMs]
   );
 
-  const cancelAuction = useCallback(
-    async (auctionId: string): Promise<boolean> => {
-      if (!publicKey) {
-        setErrorMessage("Hubungkan dompet Solana terlebih dahulu.");
-        return false;
-      }
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-      try {
-        const prepared = await auctionUseCase.prepareCancelAuction(auctionId);
-        const txSignature = await sendBase64SolanaTx({
-          serializedTransaction: prepared.serializedTransaction,
-          connection,
-          signTransaction,
-          sendTransaction,
-        });
-        await auctionUseCase.confirmCancelAuction({ auctionId, txSignature });
-        setStatusMessage("Lelang dibatalkan dan kartu dikembalikan ke dompet.");
-        setSelectedDetail(null);
-        await loadAuctions();
-        return true;
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal membatalkan lelang."
-        );
-        return false;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      auctionUseCase,
-      connection,
-      loadAuctions,
-      publicKey,
-      sendTransaction,
-      signTransaction,
-    ]
+  const tabs = useMemo(
+    () =>
+      [
+        {
+          key: "explore" as const,
+          label: t(AUCTION_TEXT_CONSTANT.TAB_EXPLORE),
+          id: AUCTION_SEMANTIC_IDS.tabExplore,
+        },
+        {
+          key: "selling" as const,
+          label: t(AUCTION_TEXT_CONSTANT.TAB_SELLING),
+          id: AUCTION_SEMANTIC_IDS.tabSelling,
+        },
+        {
+          key: "bidding" as const,
+          label: t(AUCTION_TEXT_CONSTANT.TAB_BIDDING),
+          id: AUCTION_SEMANTIC_IDS.tabBidding,
+        },
+        {
+          key: "history" as const,
+          label: t(AUCTION_TEXT_CONSTANT.TAB_HISTORY),
+          id: AUCTION_SEMANTIC_IDS.tabHistory,
+        },
+      ] as const,
+    [t]
   );
 
-  const placeBid = useCallback(
-    async (auctionId: string, amount: number): Promise<boolean> => {
-      if (!publicKey) {
-        setErrorMessage("Hubungkan dompet Solana terlebih dahulu.");
-        return false;
-      }
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-      try {
-        const prepared = await auctionUseCase.preparePlaceBid({
-          auctionId,
-          amount,
-        });
-        const txSignature = await sendBase64SolanaTx({
-          serializedTransaction: prepared.serializedTransaction,
-          connection,
-          signTransaction,
-          sendTransaction,
-        });
-        const updated = await auctionUseCase.confirmPlaceBid({
-          auctionId,
-          amount: prepared.amount,
-          deltaAmount: prepared.deltaAmount,
-          bidEscrowPda: prepared.bidEscrowPda,
-          txSignature,
-        });
-        setSelectedDetail(updated);
-        setStatusMessage(
-          `Bid ${prepared.amount} NUSA berhasil! ${prepared.deltaAmount} NUSA telah dibekukan di escrow.`
-        );
-        await loadAuctions();
-        return true;
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal memasang bid."
-        );
-        return false;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      auctionUseCase,
-      connection,
-      loadAuctions,
-      publicKey,
-      sendTransaction,
-      signTransaction,
-    ]
+  const auctions = useMemo(
+    () => listData?.auctions ?? [],
+    [listData?.auctions]
   );
 
-  const settleAuction = useCallback(
-    async (auctionId: string): Promise<boolean> => {
-      if (!publicKey) {
-        setErrorMessage("Hubungkan dompet Solana terlebih dahulu.");
-        return false;
-      }
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-      try {
-        const prepared = await auctionUseCase.prepareSettleAuction(auctionId);
-        const txSignature = await sendBase64SolanaTx({
-          serializedTransaction: prepared.serializedTransaction,
-          connection,
-          signTransaction,
-          sendTransaction,
-        });
-        const updated = await auctionUseCase.confirmSettleAuction({
-          auctionId,
-          txSignature,
-        });
-        setSelectedDetail(updated);
-        setStatusMessage("Lelang berhasil diselesaikan on-chain.");
-        await loadAuctions();
-        return true;
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal menyelesaikan lelang."
-        );
-        return false;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      auctionUseCase,
-      connection,
-      loadAuctions,
-      publicKey,
-      sendTransaction,
-      signTransaction,
-    ]
+  const sellableCards = useMemo(
+    () => listData?.sellableCards ?? [],
+    [listData?.sellableCards]
   );
 
-  const claimRefund = useCallback(
-    async (auctionId: string): Promise<boolean> => {
-      if (!publicKey) {
-        setErrorMessage("Hubungkan dompet Solana terlebih dahulu.");
-        return false;
-      }
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-      try {
-        const prepared = await auctionUseCase.prepareRefundBid(auctionId);
-        const txSignature = await sendBase64SolanaTx({
-          serializedTransaction: prepared.serializedTransaction,
-          connection,
-          signTransaction,
-          sendTransaction,
-        });
-        const updated = await auctionUseCase.confirmRefundBid({
-          auctionId,
-          txSignature,
-        });
-        setSelectedDetail(updated);
-        setStatusMessage(
-          `Refund ${prepared.refundAmount ?? 0} NUSA berhasil dikembalikan ke dompet Anda.`
-        );
-        await loadAuctions();
-        return true;
-      } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Gagal mengklaim refund NUSA."
-        );
-        return false;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [
-      auctionUseCase,
-      connection,
-      loadAuctions,
-      publicKey,
-      sendTransaction,
-      signTransaction,
-    ]
+  const frozenAuctions = useMemo(
+    () => listData?.frozenAuctions ?? [],
+    [listData?.frozenAuctions]
   );
+
+  const emptyState = useMemo(() => {
+    if (tab === "explore") {
+      return {
+        title: t(AUCTION_TEXT_CONSTANT.EMPTY_EXPLORE_TITLE),
+        desc: t(AUCTION_TEXT_CONSTANT.EMPTY_EXPLORE_DESC),
+      };
+    }
+    if (tab === "selling") {
+      return {
+        title: t(AUCTION_TEXT_CONSTANT.EMPTY_SELLING_TITLE),
+        desc: t(AUCTION_TEXT_CONSTANT.EMPTY_SELLING_DESC),
+      };
+    }
+    if (tab === "bidding") {
+      return {
+        title: t(AUCTION_TEXT_CONSTANT.EMPTY_BIDDING_TITLE),
+        desc: t(AUCTION_TEXT_CONSTANT.EMPTY_BIDDING_DESC),
+      };
+    }
+    return {
+      title: t(AUCTION_TEXT_CONSTANT.EMPTY_HISTORY_TITLE),
+      desc: t(AUCTION_TEXT_CONSTANT.EMPTY_HISTORY_DESC),
+    };
+  }, [t, tab]);
+
+  const openCreateModal = useCallback(() => {
+    setEditingAuction(null);
+    setIsCreateModalOpen(true);
+  }, []);
+
+  const openEditModal = useCallback((auction: AuctionListingEntity) => {
+    setActiveDetailId(null);
+    setIsCreateModalOpen(false);
+    setEditingAuction(auction);
+  }, []);
+
+  const closeFormModal = useCallback(() => {
+    setIsCreateModalOpen(false);
+    setEditingAuction(null);
+  }, []);
+
+  const openDetail = useCallback((auctionId: string) => {
+    setActiveDetailId(auctionId);
+  }, []);
+
+  const closeDetail = useCallback(() => {
+    setActiveDetailId(null);
+  }, []);
+
+  const handleMutationSuccess = useCallback(
+    async (message: string) => {
+      setStatusMessage(message);
+      setBannerError(null);
+      await loadAuctions();
+    },
+    [loadAuctions]
+  );
+
+  const errorMessage = bannerError ?? queryError;
 
   return {
+    locale,
+    t,
     tab,
     setTab,
+    tabs,
     kingdom,
     setKingdom,
     search,
     setSearch,
     sort,
     setSort,
-    listData,
+    page,
+    setPage,
+    getCountdown,
+    auctions,
+    sellableCards,
+    frozenAuctions,
+    pagination: listData?.pagination ?? null,
+    availableNusa: listData?.walletNusaBalance ?? 0,
+    frozenNusa: listData?.frozenNusaTotal ?? 0,
+    activeSelling: listData?.activeSellingCount ?? 0,
+    maxSelling: listData?.maxActiveListings ?? 5,
+    emptyState,
     isLoading,
     errorMessage,
-    setErrorMessage,
+    clearError: useCallback(() => setBannerError(null), []),
     statusMessage,
-    setStatusMessage,
-    isSubmitting,
-    selectedDetail,
-    isLoadingDetail,
+    clearStatus: useCallback(() => setStatusMessage(null), []),
+    activeDetailId,
     isCreateModalOpen,
-    setIsCreateModalOpen,
     editingAuction,
-    setEditingAuction,
     walletConnected: Boolean(publicKey),
     loadAuctions,
+    openCreateModal,
+    openEditModal,
+    closeFormModal,
     openDetail,
     closeDetail,
-    createAuction,
-    editAuction,
-    cancelAuction,
-    placeBid,
-    settleAuction,
-    claimRefund,
+    handleMutationSuccess,
   };
 }

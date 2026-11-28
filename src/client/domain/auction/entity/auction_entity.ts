@@ -101,13 +101,21 @@ export interface SellableCardOptionEntity {
   readonly walletQuantity: number;
   readonly inDeckQuantity: number;
   readonly availableForAuction: number;
-  readonly mintOrAssetAddress: string | null;
-  readonly collectionAddress: string | null;
+  readonly mintOrAssetAddress: string;
+  readonly collectionAddress: string;
   readonly blockedReason: string | null;
+}
+
+export interface AuctionPaginationEntity {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalItems: number;
+  readonly totalPages: number;
 }
 
 export interface AuctionListEntity {
   readonly auctions: AuctionListingEntity[];
+  readonly pagination: AuctionPaginationEntity;
   readonly walletAddress: string | null;
   readonly walletNusaBalance: number;
   readonly frozenNusaTotal: number;
@@ -123,7 +131,7 @@ export interface PreparedCreateAuctionEntity {
   readonly cardId: string;
   readonly cardMintOrAsset: string;
   readonly tokenStandard: AuctionTokenStandard;
-  readonly collectionAddress: string | null;
+  readonly collectionAddress: string;
   readonly startingPrice: number;
   readonly durationHours: number;
   readonly serializedTransaction: string;

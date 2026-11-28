@@ -2,23 +2,24 @@
 
 import React from "react";
 import { Lock, RotateCcw } from "lucide-react";
+import { useTranslator } from "@/core/translator";
 import type { FrozenAuctionItemEntity } from "@/client/domain/auction/entity/auction_entity";
 import { AUCTION_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
-import type { AuctionCopy } from "../constants/TextConstant";
+import { AUCTION_TEXT_CONSTANT } from "../constants/TextConstant";
 
 export interface AuctionFrozenBannerProps {
   readonly frozenTotal: number;
   readonly items: readonly FrozenAuctionItemEntity[];
-  readonly copy: AuctionCopy;
   readonly onOpenAuction: (auctionId: string) => void;
 }
 
 export function AuctionFrozenBanner({
   frozenTotal,
   items,
-  copy,
   onOpenAuction,
 }: AuctionFrozenBannerProps): React.ReactElement | null {
+  const { t } = useTranslator();
+
   if (frozenTotal <= 0 && items.length === 0) {
     return null;
   }
@@ -26,7 +27,7 @@ export function AuctionFrozenBanner({
   return (
     <section
       id={AUCTION_SEMANTIC_IDS.frozenBanner}
-      aria-label={copy.frozenBannerTitle}
+      aria-label={t(AUCTION_TEXT_CONSTANT.FROZEN_BANNER_TITLE)}
       className="nc-panel border-amber/40 bg-surface-elevated p-4 sm:p-5"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -36,11 +37,11 @@ export function AuctionFrozenBanner({
           </div>
           <div className="min-w-0">
             <h2 className="font-display text-lg font-bold text-cream">
-              {copy.frozenBannerTitle}:{" "}
+              {t(AUCTION_TEXT_CONSTANT.FROZEN_BANNER_TITLE)}:{" "}
               <span className="text-amber">{frozenTotal.toLocaleString()} NUSA</span>
             </h2>
             <p className="mt-1 text-sm text-muted">
-              {copy.frozenBannerDescription}
+              {t(AUCTION_TEXT_CONSTANT.FROZEN_BANNER_DESCRIPTION)}
             </p>
           </div>
         </div>
@@ -66,15 +67,15 @@ export function AuctionFrozenBanner({
                   {item.refundPending ? (
                     <span className="nc-badge-emerald">
                       <RotateCcw className="h-3 w-3" aria-hidden="true" />
-                      {copy.frozenRefundReadyBadge}
+                      {t(AUCTION_TEXT_CONSTANT.FROZEN_REFUND_READY_BADGE)}
                     </span>
                   ) : item.isHighestBidder ? (
                     <span className="nc-badge-primary">
-                      {copy.frozenHighestBadge}
+                      {t(AUCTION_TEXT_CONSTANT.FROZEN_HIGHEST_BADGE)}
                     </span>
                   ) : (
                     <span className="nc-badge-amber">
-                      {copy.frozenOutbidBadge}
+                      {t(AUCTION_TEXT_CONSTANT.FROZEN_OUTBID_BADGE)}
                     </span>
                   )}
                 </div>

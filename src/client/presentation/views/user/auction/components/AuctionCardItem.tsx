@@ -1,52 +1,24 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Clock, Gavel, Lock, Shield, Swords } from "lucide-react";
+import { useTranslator } from "@/core/translator";
 import type { AuctionListingEntity } from "@/client/domain/auction/entity/auction_entity";
-import type { AuctionCopy } from "../constants/TextConstant";
-
-export function formatCountdown(endsAtIso: string, nowMs: number): {
-  label: string;
-  isEnded: boolean;
-  isUrgent: boolean;
-  isCritical: boolean;
-} {
-  const diffSec = Math.floor((Date.parse(endsAtIso) - nowMs) / 1000);
-  if (diffSec <= 0) {
-    return { label: "00:00:00", isEnded: true, isUrgent: false, isCritical: false };
-  }
-  const hours = Math.floor(diffSec / 3600);
-  const mins = Math.floor((diffSec % 3600) / 60);
-  const secs = diffSec % 60;
-  const pad = (v: number) => String(v).padStart(2, "0");
-  return {
-    label: `${pad(hours)}:${pad(mins)}:${pad(secs)}`,
-    isEnded: false,
-    isUrgent: diffSec <= 3600,
-    isCritical: diffSec <= 300,
-  };
-}
+import { AUCTION_TEXT_CONSTANT } from "../constants/TextConstant";
+import type { AuctionCountdownState } from "../hooks/useAuction";
 
 export interface AuctionCardItemProps {
   readonly auction: AuctionListingEntity;
-  readonly copy: AuctionCopy;
+  readonly countdown: AuctionCountdownState;
   readonly onSelect: (auctionId: string) => void;
 }
 
 export function AuctionCardItem({
   auction,
-  copy,
+  countdown,
   onSelect,
 }: AuctionCardItemProps): React.ReactElement {
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
-
-  useEffect(() => {
-    if (auction.status !== "ACTIVE") return;
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [auction.status]);
-
-  const countdown = formatCountdown(auction.endsAt, nowMs);
+  const { t } = useTranslator();
   const displayPrice =
     auction.bidCount > 0 ? auction.currentHighestBid : auction.startingPrice;
 
@@ -103,21 +75,25 @@ export function AuctionCardItem({
             {auction.card.baseDefense}
           </span>
           <span className="truncate">
-            {copy.sellerLabel}: {auction.sellerName}
+            {t(AUCTION_TEXT_CONSTANT.SELLER_LABEL)}: {auction.sellerName}
           </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-border-subtle bg-surface-elevated p-3">
           <div>
             <p className="text-xs text-subtle">
-              {auction.bidCount > 0 ? copy.currentBidLabel : copy.startingPriceLabel}
+              {auction.bidCount > 0
+                ? t(AUCTION_TEXT_CONSTANT.CURRENT_BID_LABEL)
+                : t(AUCTION_TEXT_CONSTANT.STARTING_PRICE_LABEL)}
             </p>
             <p className="font-display text-lg font-bold text-amber">
               {displayPrice.toLocaleString()} NUSA
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-subtle">{copy.bidsCountLabel}</p>
+            <p className="text-xs text-subtle">
+              {t(AUCTION_TEXT_CONSTANT.BIDS_COUNT_LABEL)}
+            </p>
             <p className="font-display text-lg font-bold text-fg">
               {auction.bidCount}
             </p>
@@ -132,12 +108,12 @@ export function AuctionCardItem({
             </span>
             <span>
               {auction.myRefundPending
-                ? copy.frozenRefundReadyBadge
+                ? t(AUCTION_TEXT_CONSTANT.FROZEN_REFUND_READY_BADGE)
                 : auction.highestBidderId &&
                     !auction.canBid &&
                     auction.status === "ACTIVE"
-                  ? copy.frozenHighestBadge
-                  : copy.frozenOutbidBadge}
+                  ? t(AUCTION_TEXT_CONSTANT.FROZEN_HIGHEST_BADGE)
+                  : t(AUCTION_TEXT_CONSTANT.FROZEN_OUTBID_BADGE)}
             </span>
           </div>
         )}
@@ -148,7 +124,9 @@ export function AuctionCardItem({
           className="nc-btn-primary mt-4 w-full"
         >
           <Gavel className="h-4 w-4" aria-hidden="true" />
-          {auction.canBid ? `${copy.placeBid} (${auction.minNextBid.toLocaleString()} NUSA)` : copy.viewDetail}
+          {auction.canBid
+            ? `${t(AUCTION_TEXT_CONSTANT.PLACE_BID)} (${auction.minNextBid.toLocaleString()} NUSA)`
+            : t(AUCTION_TEXT_CONSTANT.VIEW_DETAIL)}
         </button>
       </div>
     </article>

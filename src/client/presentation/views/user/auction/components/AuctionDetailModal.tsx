@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -9,77 +9,82 @@ import {
   Gavel,
   Lock,
   Pencil,
+  RefreshCw,
   RotateCcw,
   Shield,
   Swords,
   Trash2,
   X,
 } from "lucide-react";
-import { ROUTES, type SupportedLocale } from "@/core/constants/routes";
+import { ROUTES } from "@/core/constants/routes";
 import type { AuctionDetailEntity } from "@/client/domain/auction/entity/auction_entity";
 import { AUCTION_SEMANTIC_IDS } from "../constants/SemanticIdConstant";
-import type { AuctionCopy } from "../constants/TextConstant";
-import { formatCountdown } from "./AuctionCardItem";
+import { AUCTION_TEXT_CONSTANT } from "../constants/TextConstant";
+import type { AuctionCountdownState } from "../hooks/useAuction";
+import { useAuctionDetailModal } from "../hooks/useAuctionDetailModal";
 
 export interface AuctionDetailModalProps {
-  readonly detail: AuctionDetailEntity;
-  readonly locale: SupportedLocale;
-  readonly copy: AuctionCopy;
+  readonly auctionId: string;
+  readonly getCountdown: (endsAtIso: string) => AuctionCountdownState;
   readonly walletNusaBalance: number;
-  readonly isSubmitting: boolean;
   readonly onClose: () => void;
-  readonly onPlaceBid: (auctionId: string, amount: number) => Promise<boolean>;
   readonly onOpenEdit: (detail: AuctionDetailEntity) => void;
-  readonly onCancelAuction: (auctionId: string) => Promise<boolean>;
-  readonly onSettleAuction: (auctionId: string) => Promise<boolean>;
-  readonly onClaimRefund: (auctionId: string) => Promise<boolean>;
+  readonly onMutated: (message: string) => Promise<void>;
 }
 
 const BID_STEPS = [0, 50, 100, 250] as const;
 
 export function AuctionDetailModal({
-  detail,
-  locale,
-  copy,
+  auctionId,
+  getCountdown,
   walletNusaBalance,
-  isSubmitting,
   onClose,
-  onPlaceBid,
   onOpenEdit,
-  onCancelAuction,
-  onSettleAuction,
-  onClaimRefund,
+  onMutated,
 }: AuctionDetailModalProps): React.ReactElement {
-  const [bidAmountStr, setBidAmountStr] = useState<string>(
-    String(detail.minNextBid)
-  );
-  const [confirmCancel, setConfirmCancel] = useState<boolean>(false);
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const vm = useAuctionDetailModal({
+    auctionId,
+    walletNusaBalance,
+    onClose,
+    onMutated,
+  });
+  const { detail, locale, t } = vm;
 
-  useEffect(() => {
-    setBidAmountStr(String(detail.minNextBid));
-  }, [detail.minNextBid]);
+  if (vm.isLoading || !detail) {
+    return (
+      <div
+        id={AUCTION_SEMANTIC_IDS.detailModal}
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 p-4"
+      >
+        <div className="animate-nc-modal nc-panel flex w-full max-w-md flex-col items-center gap-3 p-6 text-center">
+          {vm.localError ? (
+            <>
+              <AlertCircle className="h-6 w-6 text-danger-light" />
+              <p className="text-sm text-danger-light">{vm.localError}</p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="nc-btn-secondary mt-2"
+              >
+                {t(AUCTION_TEXT_CONSTANT.CLOSE_BUTTON_LABEL)}
+              </button>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-6 w-6 animate-spin text-primary-light" />
+              <p className="text-sm text-muted">
+                {t(AUCTION_TEXT_CONSTANT.LOADING_TEXT)}
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    if (detail.status !== "ACTIVE") return;
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [detail.status]);
-
-  const countdown = formatCountdown(detail.endsAt, nowMs);
-  const parsedBid = Number.parseInt(bidAmountStr, 10);
-  const isValidBid =
-    Number.isInteger(parsedBid) && parsedBid >= detail.minNextBid;
-  const deltaRequired = isValidBid
-    ? Math.max(0, parsedBid - detail.myHeldAmount)
-    : Math.max(0, detail.minNextBid - detail.myHeldAmount);
-  const hasEnoughBalance = walletNusaBalance >= deltaRequired;
-
-  const handleBidSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValidBid || !hasEnoughBalance) return;
-    await onPlaceBid(detail.id, parsedBid);
-  };
+  const countdown = getCountdown(detail.endsAt);
 
   return (
     <div
@@ -99,19 +104,26 @@ export function AuctionDetailModal({
               {detail.card.name}
             </h2>
             <p className="mt-1 text-xs text-subtle">
-              {copy.sellerLabel}: {detail.sellerName} ({detail.sellerWallet.slice(0, 4)}...
-              {detail.sellerWallet.slice(-4)})
+              {t(AUCTION_TEXT_CONSTANT.SELLER_LABEL)}: {detail.sellerName} (
+              {detail.sellerWallet.slice(0, 4)}...{detail.sellerWallet.slice(-4)})
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label={copy.cancelAction}
+            aria-label={t(AUCTION_TEXT_CONSTANT.CANCEL_ACTION)}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border-base bg-surface-elevated text-muted hover:border-border-strong hover:text-fg"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {vm.localError && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger-light">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{vm.localError}</span>
+          </div>
+        )}
 
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-5">
@@ -144,7 +156,7 @@ export function AuctionDetailModal({
             </div>
 
             <p className="rounded-xl border border-border-subtle bg-surface-elevated p-3 text-xs text-muted">
-              {copy.antiSnipeNote}
+              {t(AUCTION_TEXT_CONSTANT.ANTI_SNIPE_NOTE)}
             </p>
           </div>
 
@@ -153,8 +165,8 @@ export function AuctionDetailModal({
               <div>
                 <p className="text-xs text-subtle">
                   {detail.bidCount > 0
-                    ? copy.currentBidLabel
-                    : copy.startingPriceLabel}
+                    ? t(AUCTION_TEXT_CONSTANT.CURRENT_BID_LABEL)
+                    : t(AUCTION_TEXT_CONSTANT.STARTING_PRICE_LABEL)}
                 </p>
                 <p className="font-display text-2xl font-bold text-amber">
                   {(detail.bidCount > 0
@@ -165,7 +177,9 @@ export function AuctionDetailModal({
                 </p>
               </div>
               <div>
-                <p className="text-xs text-subtle">{copy.timeRemainingLabel}</p>
+                <p className="text-xs text-subtle">
+                  {t(AUCTION_TEXT_CONSTANT.TIME_REMAINING_LABEL)}
+                </p>
                 <p
                   className={`mt-0.5 inline-flex items-center gap-1.5 font-display text-xl font-bold ${
                     countdown.isCritical
@@ -182,9 +196,12 @@ export function AuctionDetailModal({
                 </p>
               </div>
               <div className="col-span-2 sm:col-span-1">
-                <p className="text-xs text-subtle">{copy.highestBidderLabel}</p>
+                <p className="text-xs text-subtle">
+                  {t(AUCTION_TEXT_CONSTANT.HIGHEST_BIDDER_LABEL)}
+                </p>
                 <p className="truncate font-display text-base font-bold text-fg">
-                  {detail.highestBidderName ?? copy.noBidsYet}
+                  {detail.highestBidderName ??
+                    t(AUCTION_TEXT_CONSTANT.NO_BIDS_YET)}
                 </p>
               </div>
             </div>
@@ -194,19 +211,19 @@ export function AuctionDetailModal({
                 <div className="flex items-center gap-2 text-amber-light">
                   <Lock className="h-4 w-4 shrink-0" />
                   <span>
-                    Dana dibekukan Anda di lelang ini:{" "}
+                    {t(AUCTION_TEXT_CONSTANT.FROZEN_ON_THIS_AUCTION_LABEL)}{" "}
                     <strong>{detail.myHeldAmount.toLocaleString()} NUSA</strong>
                   </span>
                 </div>
                 {detail.myRefundPending && (
                   <button
                     type="button"
-                    disabled={isSubmitting}
-                    onClick={() => void onClaimRefund(detail.id)}
+                    disabled={vm.isSubmitting}
+                    onClick={() => void vm.claimRefund()}
                     className="nc-btn-emerald min-h-[40px] px-4 text-sm"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    {copy.claimRefund}
+                    {t(AUCTION_TEXT_CONSTANT.CLAIM_REFUND)}
                   </button>
                 )}
               </div>
@@ -215,37 +232,40 @@ export function AuctionDetailModal({
             {detail.canSettle && (
               <div className="rounded-xl border border-emerald/40 bg-emerald/10 p-4">
                 <p className="text-sm text-cream">
-                  Waktu lelang telah berakhir. Selesaikan transaksi on-chain untuk
-                  mengirim kartu ke pemenang dan memproses pembagian NUSA (90% penjual,
-                  10% fee platform).
+                  {t(AUCTION_TEXT_CONSTANT.SETTLE_PROMPT_TEXT)}
                 </p>
                 <button
                   type="button"
-                  disabled={isSubmitting}
-                  onClick={() => void onSettleAuction(detail.id)}
+                  disabled={vm.isSubmitting}
+                  onClick={() => void vm.settleAuction()}
                   className="nc-btn-emerald mt-3"
                 >
-                  {isSubmitting ? "Menyelesaikan..." : copy.settleAuction}
+                  {vm.isSubmitting
+                    ? t(AUCTION_TEXT_CONSTANT.SETTLING_SHORT)
+                    : t(AUCTION_TEXT_CONSTANT.SETTLE_AUCTION)}
                 </button>
               </div>
             )}
 
             {detail.canBid ? (
               <form
-                onSubmit={handleBidSubmit}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void vm.submitBid();
+                }}
                 className="space-y-3 rounded-xl border border-border-base bg-surface-elevated p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                   <span className="text-muted">
-                    {copy.availableBalanceLabel}:{" "}
+                    {t(AUCTION_TEXT_CONSTANT.AVAILABLE_BALANCE_LABEL)}:{" "}
                     <strong className="text-fg">
                       {walletNusaBalance.toLocaleString()} NUSA
                     </strong>
                   </span>
                   <span className="text-muted">
-                    Dipakai sekarang (delta):{" "}
+                    {t(AUCTION_TEXT_CONSTANT.DELTA_REQUIRED_NOW_LABEL)}{" "}
                     <strong className="text-amber-light">
-                      {deltaRequired.toLocaleString()} NUSA
+                      {vm.deltaRequired.toLocaleString()} NUSA
                     </strong>
                   </span>
                 </div>
@@ -256,19 +276,23 @@ export function AuctionDetailModal({
                     type="number"
                     min={detail.minNextBid}
                     step={1}
-                    value={bidAmountStr}
-                    onChange={(e) => setBidAmountStr(e.target.value)}
+                    value={vm.bidAmountStr}
+                    onChange={(e) => vm.setBidAmountStr(e.target.value)}
                     className="nc-input flex-1"
                     required
                   />
                   <button
                     id={AUCTION_SEMANTIC_IDS.bidSubmitButton}
                     type="submit"
-                    disabled={isSubmitting || !isValidBid || !hasEnoughBalance}
+                    disabled={
+                      vm.isSubmitting || !vm.isValidBid || !vm.hasEnoughBalance
+                    }
                     className="nc-btn-emerald shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Gavel className="h-4 w-4" />
-                    {isSubmitting ? "Memproses..." : copy.placeBid}
+                    {vm.isSubmitting
+                      ? t(AUCTION_TEXT_CONSTANT.PROCESSING_SHORT)
+                      : t(AUCTION_TEXT_CONSTANT.PLACE_BID)}
                   </button>
                 </div>
 
@@ -279,45 +303,49 @@ export function AuctionDetailModal({
                       <button
                         key={extra}
                         type="button"
-                        onClick={() => setBidAmountStr(String(target))}
+                        onClick={() => vm.setBidAmountStr(String(target))}
                         className="min-h-[36px] rounded-lg border border-border-base bg-surface px-3 text-xs font-semibold text-muted hover:border-border-strong hover:text-fg"
                       >
                         {extra === 0
-                          ? `Min (${target.toLocaleString()})`
+                          ? `${t(AUCTION_TEXT_CONSTANT.MIN_STEP_PREFIX)} (${target.toLocaleString()})`
                           : `+${extra + 50} (${target.toLocaleString()})`}
                       </button>
                     );
                   })}
                 </div>
 
-                {!hasEnoughBalance && (
+                {!vm.hasEnoughBalance && (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger-light">
                     <span className="flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4 shrink-0" />
-                      {copy.insufficientBalance} (Butuh {deltaRequired.toLocaleString()} NUSA)
+                      {t(AUCTION_TEXT_CONSTANT.INSUFFICIENT_BALANCE)} (
+                      {t(AUCTION_TEXT_CONSTANT.NEED_SHORTFALL_PREFIX)}{" "}
+                      {vm.deltaRequired.toLocaleString()} NUSA)
                     </span>
                     <Link
                       href={ROUTES.USER_SHOP(locale)}
                       className="font-bold text-fg underline"
                     >
-                      {copy.goToShop}
+                      {t(AUCTION_TEXT_CONSTANT.GO_TO_SHOP)}
                     </Link>
                   </div>
                 )}
 
-                <p className="text-xs text-subtle">{copy.freezeWarning}</p>
+                <p className="text-xs text-subtle">
+                  {t(AUCTION_TEXT_CONSTANT.FREEZE_WARNING)}
+                </p>
               </form>
             ) : (
               detail.status === "ACTIVE" &&
               !countdown.isEnded && (
                 <div className="rounded-xl border border-border-subtle bg-surface-elevated p-3.5 text-sm text-muted">
                   {detail.canEdit || detail.canCancel
-                    ? "Anda adalah pemilik lelang ini. Selama belum ada penawar, Anda dapat mengedit harga/durasi atau menghapus lelang."
+                    ? t(AUCTION_TEXT_CONSTANT.SELLER_CAN_MANAGE_NOTICE)
                     : detail.highestBidderId && detail.myHeldAmount > 0
-                      ? copy.alreadyHighestBidder
+                      ? t(AUCTION_TEXT_CONSTANT.ALREADY_HIGHEST_BIDDER)
                       : detail.bidCount > 0 && !detail.canBid
-                        ? copy.lockedEditReason
-                        : copy.sellerCannotBid}
+                        ? t(AUCTION_TEXT_CONSTANT.LOCKED_EDIT_REASON)
+                        : t(AUCTION_TEXT_CONSTANT.SELLER_CANNOT_BID)}
                 </div>
               )
             )}
@@ -326,39 +354,41 @@ export function AuctionDetailModal({
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-base bg-surface-elevated p-4">
                 <button
                   type="button"
-                  disabled={isSubmitting}
+                  disabled={vm.isSubmitting}
                   onClick={() => onOpenEdit(detail)}
                   className="nc-btn-secondary"
                 >
                   <Pencil className="h-4 w-4" />
-                  {copy.editAuction}
+                  {t(AUCTION_TEXT_CONSTANT.EDIT_AUCTION)}
                 </button>
-                {!confirmCancel ? (
+                {!vm.confirmCancel ? (
                   <button
                     type="button"
-                    disabled={isSubmitting}
-                    onClick={() => setConfirmCancel(true)}
+                    disabled={vm.isSubmitting}
+                    onClick={() => vm.setConfirmCancel(true)}
                     className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-danger/50 bg-danger/15 px-5 font-display text-sm font-bold text-danger-light hover:bg-danger/25"
                   >
                     <Trash2 className="h-4 w-4" />
-                    {copy.cancelAuction}
+                    {t(AUCTION_TEXT_CONSTANT.CANCEL_AUCTION)}
                   </button>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      disabled={isSubmitting}
-                      onClick={() => void onCancelAuction(detail.id)}
+                      disabled={vm.isSubmitting}
+                      onClick={() => void vm.cancelAuction()}
                       className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-danger px-5 font-display text-sm font-bold text-fg"
                     >
-                      {isSubmitting ? "Membatalkan..." : "Konfirmasi Hapus & Tarik Kartu"}
+                      {vm.isSubmitting
+                        ? t(AUCTION_TEXT_CONSTANT.CANCELLING_SHORT)
+                        : t(AUCTION_TEXT_CONSTANT.CONFIRM_DELETE_WITHDRAW)}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmCancel(false)}
+                      onClick={() => vm.setConfirmCancel(false)}
                       className="nc-btn-secondary"
                     >
-                      Batal
+                      {t(AUCTION_TEXT_CONSTANT.CANCEL_BUTTON_LABEL)}
                     </button>
                   </div>
                 )}
@@ -367,10 +397,12 @@ export function AuctionDetailModal({
 
             <div className="rounded-xl border border-border-subtle bg-surface-elevated p-4">
               <h3 className="font-display text-base font-bold text-fg">
-                {copy.bidHistoryTitle} ({detail.bids.length})
+                {t(AUCTION_TEXT_CONSTANT.BID_HISTORY_TITLE)} ({detail.bids.length})
               </h3>
               {detail.bids.length === 0 ? (
-                <p className="mt-2 text-sm text-subtle">{copy.noBidsYet}</p>
+                <p className="mt-2 text-sm text-subtle">
+                  {t(AUCTION_TEXT_CONSTANT.NO_BIDS_YET)}
+                </p>
               ) : (
                 <ul className="mt-3 max-h-52 space-y-2 overflow-y-auto pr-1">
                   {detail.bids.map((bid, idx) => (

@@ -18,6 +18,10 @@ import {
   mapAuctionDetailToEntity,
   mapAuctionListToEntity,
   mapAuctionListingToEntity,
+  mapPreparedBidToEntity,
+  mapPreparedCreateAuctionToEntity,
+  mapPreparedFinalizeToEntity,
+  mapPreparedManageAuctionToEntity,
 } from "../model/auction_model";
 
 @injectable()
@@ -42,12 +46,13 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     return mapAuctionDetailToEntity(raw);
   }
 
-  public prepareCreateAuction(input: {
+  public async prepareCreateAuction(input: {
     cardId: string;
     startingPrice: number;
     durationHours: number;
   }): Promise<PreparedCreateAuctionEntity> {
-    return this.dataSource.prepareCreateAuction(input);
+    const raw = await this.dataSource.prepareCreateAuction(input);
+    return mapPreparedCreateAuctionToEntity(raw);
   }
 
   public async confirmCreateAuction(input: {
@@ -55,7 +60,7 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     cardId: string;
     cardMintOrAsset: string;
     tokenStandard: AuctionTokenStandard;
-    collectionAddress?: string | null;
+    collectionAddress: string;
     startingPrice: number;
     durationHours: number;
     txSignature: string;
@@ -64,12 +69,13 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     return mapAuctionListingToEntity(raw);
   }
 
-  public prepareEditAuction(input: {
+  public async prepareEditAuction(input: {
     auctionId: string;
     startingPrice: number;
     durationHours: number;
   }): Promise<PreparedManageAuctionEntity> {
-    return this.dataSource.prepareEditAuction(input);
+    const raw = await this.dataSource.prepareEditAuction(input);
+    return mapPreparedManageAuctionToEntity(raw);
   }
 
   public async confirmEditAuction(input: {
@@ -82,10 +88,11 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     return mapAuctionListingToEntity(raw);
   }
 
-  public prepareCancelAuction(
+  public async prepareCancelAuction(
     auctionId: string
   ): Promise<PreparedManageAuctionEntity> {
-    return this.dataSource.prepareCancelAuction(auctionId);
+    const raw = await this.dataSource.prepareCancelAuction(auctionId);
+    return mapPreparedManageAuctionToEntity(raw);
   }
 
   public async confirmCancelAuction(input: {
@@ -96,11 +103,12 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     return mapAuctionListingToEntity(raw);
   }
 
-  public preparePlaceBid(input: {
+  public async preparePlaceBid(input: {
     auctionId: string;
     amount: number;
   }): Promise<PreparedBidEntity> {
-    return this.dataSource.preparePlaceBid(input);
+    const raw = await this.dataSource.preparePlaceBid(input);
+    return mapPreparedBidToEntity(raw);
   }
 
   public async confirmPlaceBid(input: {
@@ -114,10 +122,11 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     return mapAuctionDetailToEntity(raw);
   }
 
-  public prepareSettleAuction(
+  public async prepareSettleAuction(
     auctionId: string
   ): Promise<PreparedFinalizeEntity> {
-    return this.dataSource.prepareSettleAuction(auctionId);
+    const raw = await this.dataSource.prepareSettleAuction(auctionId);
+    return mapPreparedFinalizeToEntity(raw);
   }
 
   public async confirmSettleAuction(input: {
@@ -128,10 +137,11 @@ export class AuctionRepositoryImpl implements AuctionRepository {
     return mapAuctionDetailToEntity(raw);
   }
 
-  public prepareRefundBid(
+  public async prepareRefundBid(
     auctionId: string
   ): Promise<PreparedFinalizeEntity> {
-    return this.dataSource.prepareRefundBid(auctionId);
+    const raw = await this.dataSource.prepareRefundBid(auctionId);
+    return mapPreparedFinalizeToEntity(raw);
   }
 
   public async confirmRefundBid(input: {

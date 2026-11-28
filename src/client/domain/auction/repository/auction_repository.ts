@@ -17,6 +17,8 @@ export interface AuctionListQuery {
   cardType?: string;
   search?: string;
   sort?: AuctionSort;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface AuctionRepository {
@@ -32,7 +34,7 @@ export interface AuctionRepository {
     cardId: string;
     cardMintOrAsset: string;
     tokenStandard: AuctionTokenStandard;
-    collectionAddress?: string | null;
+    collectionAddress: string;
     startingPrice: number;
     durationHours: number;
     txSignature: string;
