@@ -789,7 +789,8 @@ model AuctionListing {
   feeAmount           Int               @default(0)
   sellerPayout        Int               @default(0)
   bidCount            Int               @default(0)
-  durationHours       Int
+  durationHours       Int               @default(1)
+  durationMinutes     Int               @default(60)
   status              AuctionStatus     @default(ACTIVE)
   startsAt            DateTime          @default(now())
   originalEndsAt      DateTime

@@ -24,6 +24,11 @@ export const NUSA_AMM_DEX_PROGRAM_ID = new PublicKey(
     "7WdVgAhEJkaULUF2QnW3a6jqJyc6QeQeKnbN32rTDmJ5"
 );
 
+export const NUSA_AUCTION_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_NUSA_AUCTION_PROGRAM_ID?.trim() ||
+    "JCQUebAXm8eqkU7XW3ZUgho69cJQV4BtPmYTuyHxDahd"
+);
+
 export function getSolanaNetwork(): SolanaCluster {
   const raw = process.env.NEXT_PUBLIC_SOLANA_NETWORK?.trim().toLowerCase();
   if (raw === "mainnet-beta" || raw === "mainnet") return "mainnet-beta";
@@ -433,5 +438,31 @@ export async function deriveVaultDepositPda(
       mintOrAsset.toBytes(),
     ],
     NUSA_CARD_VAULT_PROGRAM_ID
+  );
+}
+
+export async function deriveAuctionConfigPda(): Promise<[PublicKey, number]> {
+  return PublicKey.findProgramAddress(
+    [Buffer.from("auction_config")],
+    NUSA_AUCTION_PROGRAM_ID
+  );
+}
+
+export async function deriveAuctionPda(
+  auctionId: string
+): Promise<[PublicKey, number]> {
+  return PublicKey.findProgramAddress(
+    [Buffer.from("auction"), Buffer.from(auctionId, "utf8")],
+    NUSA_AUCTION_PROGRAM_ID
+  );
+}
+
+export async function deriveBidEscrowPda(
+  auctionPda: PublicKey,
+  bidder: PublicKey
+): Promise<[PublicKey, number]> {
+  return PublicKey.findProgramAddress(
+    [Buffer.from("bid_escrow"), auctionPda.toBytes(), bidder.toBytes()],
+    NUSA_AUCTION_PROGRAM_ID
   );
 }

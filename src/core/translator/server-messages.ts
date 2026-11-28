@@ -118,6 +118,151 @@ const TRANSLATIONS: Record<string, { id?: string; en: string; zh: string }> = {
   "Card escrow membutuhkan storage PostgreSQL.": { en: "Card escrow requires PostgreSQL storage.", zh: "卡牌托管需要使用 PostgreSQL 存储。" },
   "Escrow kartu tidak ditemukan.": { en: "Card escrow not found.", zh: "未找到卡牌托管。" },
   "Battle authoritative memerlukan storage Prisma di production.": { en: "Authoritative battles require Prisma storage in production.", zh: "生产环境中的权威对战需要使用 Prisma 存储。" },
+  "auction.error.walletRequired": {
+    id: "Hubungkan dompet Solana terlebih dahulu untuk menggunakan fitur Lelang.",
+    en: "Connect your Solana wallet first to use the Auction House.",
+    zh: "请先连接您的 Solana 钱包以使用拍卖行功能。",
+  },
+  "auction.error.notFound": {
+    id: "Lelang tidak ditemukan.",
+    en: "Auction not found.",
+    zh: "未找到该拍卖。",
+  },
+  "auction.error.invalidStartingPrice": {
+    id: "Harga awal minimal 50 NUSA (bilangan bulat).",
+    en: "Starting price must be a whole number of at least 50 NUSA.",
+    zh: "起拍价必须为至少 50 NUSA 的整数。",
+  },
+  "auction.error.invalidDuration": {
+    id: "Durasi lelang harus antara 5 menit hingga 24 jam.",
+    en: "Auction duration must be between 5 minutes and 24 hours.",
+    zh: "拍卖时长必须在 5 分钟至 24 小时之间。",
+  },
+  "auction.error.maxActiveListings": {
+    id: "Maksimal 5 lelang aktif secara bersamaan.",
+    en: "You can have at most 5 active auctions at the same time.",
+    zh: "最多同时只能有 5 个进行中的拍卖。",
+  },
+  "auction.error.cardNotOwned": {
+    id: "Anda tidak memiliki kartu ini di dompet Solana.",
+    en: "You do not own this card in your Solana wallet.",
+    zh: "您的 Solana 钱包中未持有此卡牌。",
+  },
+  "auction.error.cardInactive": {
+    id: "Kartu ini tidak aktif dan tidak dapat dilelang.",
+    en: "This card is inactive and cannot be auctioned.",
+    zh: "此卡牌未启用，无法参与拍卖。",
+  },
+  "auction.error.customCardNotApproved": {
+    id: "Kartu kustom harus disetujui admin terlebih dahulu sebelum dilelang.",
+    en: "Custom cards must be approved by an admin before auctioning.",
+    zh: "自定义卡牌需先通过管理员审核方可拍卖。",
+  },
+  "auction.error.cardInDeck": {
+    id: "Kartu ini sedang dipakai di Deck Anda. Keluarkan kartu dari Deck terlebih dahulu sebelum melelang.",
+    en: "This card is currently assigned to a Deck. Remove it from your Deck before auctioning.",
+    zh: "此卡牌已编入您的卡组，请先移出卡组后再拍卖。",
+  },
+  "auction.error.cardNoOnchainMint": {
+    id: "Kartu belum memiliki aset on-chain di Solana.",
+    en: "This card does not have an on-chain Solana mint or asset address.",
+    zh: "此卡牌尚未拥有 Solana 链上资产地址。",
+  },
+  "auction.error.cardInOtherVault": {
+    id: "Kartu sedang terkunci di vault lain.",
+    en: "This card is currently locked in another vault.",
+    zh: "此卡牌当前已锁定在其他托管金库中。",
+  },
+  "auction.error.sellerOnlyEdit": {
+    id: "Hanya pemilik lelang yang dapat mengedit lelang ini.",
+    en: "Only the auction owner can edit this auction.",
+    zh: "只有拍卖发布者可以编辑此拍卖。",
+  },
+  "auction.error.sellerOnlyCancel": {
+    id: "Hanya pemilik lelang yang dapat membatalkan lelang.",
+    en: "Only the auction owner can cancel this auction.",
+    zh: "只有拍卖发布者可以取消此拍卖。",
+  },
+  "auction.error.notActive": {
+    id: "Lelang sudah tidak aktif.",
+    en: "This auction is no longer active.",
+    zh: "该拍卖已不再进行中。",
+  },
+  "auction.error.lockedEditHasBids": {
+    id: "Lelang tidak dapat diedit karena sudah ada peserta yang melakukan bid.",
+    en: "Auction cannot be edited because a bid has already been placed.",
+    zh: "已有玩家出价，无法再编辑拍卖。",
+  },
+  "auction.error.lockedCancelHasBids": {
+    id: "Lelang tidak dapat dihapus karena sudah ada peserta yang melakukan bid.",
+    en: "Auction cannot be deleted because a bid has already been placed.",
+    zh: "已有玩家出价，无法再取消拍卖。",
+  },
+  "auction.error.invalidEndTime": {
+    id: "Durasi baru harus menghasilkan waktu akhir di masa depan.",
+    en: "The updated duration must end in the future.",
+    zh: "新的拍卖时长必须晚于当前时间。",
+  },
+  "auction.error.ended": {
+    id: "Lelang sudah berakhir atau tidak aktif.",
+    en: "This auction has ended or is no longer active.",
+    zh: "该拍卖已结束或未启用。",
+  },
+  "auction.error.sellerCannotBid": {
+    id: "Pemilik lelang tidak dapat menawar kartunya sendiri.",
+    en: "Sellers cannot bid on their own auction.",
+    zh: "卖家不能对自己的拍卖出价。",
+  },
+  "auction.error.alreadyHighestBidder": {
+    id: "Anda sudah menjadi penawar tertinggi saat ini. Tunggu penawar lain sebelum menaikkan bid.",
+    en: "You are already the highest bidder. Wait for another bidder before raising.",
+    zh: "您已是当前最高出价者，请等待其他玩家出价后再加价。",
+  },
+  "auction.error.invalidBidAmount": {
+    id: "Nominal bid harus berupa bilangan bulat NUSA.",
+    en: "Bid amount must be a whole number of NUSA.",
+    zh: "出价金额必须为整数 NUSA。",
+  },
+  "auction.error.bidTooLow": {
+    id: "Nominal bid terlalu rendah. Minimal kenaikan adalah +50 NUSA.",
+    en: "Bid amount is too low. Minimum increment is +50 NUSA.",
+    zh: "出价金额过低，每次加价至少 +50 NUSA。",
+  },
+  "auction.error.bidBelowHeld": {
+    id: "Nominal bid harus lebih besar dari saldo yang sudah Anda tahan.",
+    en: "Bid amount must exceed your currently held NUSA deposit.",
+    zh: "出价金额必须大于您当前冻结的 NUSA 金额。",
+  },
+  "auction.error.insufficientNusaBalance": {
+    id: "Saldo NUSA di dompet Anda tidak mencukupi untuk memasang bid ini.",
+    en: "Insufficient NUSA balance in your wallet to place this bid.",
+    zh: "您的钱包 NUSA 余额不足以完成此次出价。",
+  },
+  "auction.error.alreadySettled": {
+    id: "Lelang sudah diselesaikan.",
+    en: "This auction has already been settled.",
+    zh: "该拍卖已完成结算。",
+  },
+  "auction.error.stillRunningSettle": {
+    id: "Lelang masih berjalan dan belum dapat diselesaikan.",
+    en: "Auction is still running and cannot be settled yet.",
+    zh: "拍卖仍在进行中，暂无法结算。",
+  },
+  "auction.error.stillRunningRefund": {
+    id: "Dana yang dibekukan baru dapat dikembalikan setelah lelang berakhir.",
+    en: "Frozen funds can only be refunded after the auction ends.",
+    zh: "冻结资金仅可在拍卖结束后申请退还。",
+  },
+  "auction.error.winnerCannotRefund": {
+    id: "Pemenang lelang tidak dapat mengklaim refund bid.",
+    en: "The winning bidder cannot claim a losing-bid refund.",
+    zh: "中标者无法领取未中标退款。",
+  },
+  "auction.error.nothingToRefund": {
+    id: "Tidak ada saldo NUSA dibekukan yang perlu dikembalikan.",
+    en: "There is no frozen NUSA balance to refund.",
+    zh: "没有可退还的冻结 NUSA 余额。",
+  },
   "Quick match memerlukan storage Prisma di production.": { en: "Quick match requires Prisma storage in production.", zh: "生产环境中的快速匹配需要使用 Prisma 存储。" },
   "Kartu tidak ditemukan.": { en: "Card not found.", zh: "未找到卡牌。" },
   "Terjadi kesalahan internal server.": { en: "A server error occurred. Please try again.", zh: "服务器发生错误，请重试。" },

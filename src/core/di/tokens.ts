@@ -21,6 +21,8 @@ import type { TeamRepository } from "@/client/domain/team/repository/team_reposi
 import type { TeamUseCase } from "@/client/domain/team/usecase/team_usecase";
 import type { SolanaTokenRepository } from "@/client/domain/solana-token/repository/solana_token_repository";
 import type { SolanaTokenUseCase } from "@/client/domain/solana-token/usecase/solana_token_usecase";
+import type { AuctionRepository } from "@/client/domain/auction/repository/auction_repository";
+import type { AuctionUseCase } from "@/client/domain/auction/usecase/auction_usecase";
 
 export const CARD_REPOSITORY_TOKEN = new InjectionToken<CardRepository>(
   "CARD_REPOSITORY_TOKEN"
@@ -55,6 +57,8 @@ export const TEAM_REPOSITORY_TOKEN = new InjectionToken<TeamRepository>(
 );
 export const SOLANA_TOKEN_REPOSITORY_TOKEN =
   new InjectionToken<SolanaTokenRepository>("SOLANA_TOKEN_REPOSITORY_TOKEN");
+export const AUCTION_REPOSITORY_TOKEN =
+  new InjectionToken<AuctionRepository>("AUCTION_REPOSITORY_TOKEN");
 
 export const CARD_USECASE_TOKEN = new InjectionToken<CardUseCase>(
   "CARD_USECASE_TOKEN"
@@ -89,4 +93,6 @@ export const TEAM_USECASE_TOKEN = new InjectionToken<TeamUseCase>(
 );
 export const SOLANA_TOKEN_USECASE_TOKEN =
   new InjectionToken<SolanaTokenUseCase>("SOLANA_TOKEN_USECASE_TOKEN");
+export const AUCTION_USECASE_TOKEN =
+  new InjectionToken<AuctionUseCase>("AUCTION_USECASE_TOKEN");
 

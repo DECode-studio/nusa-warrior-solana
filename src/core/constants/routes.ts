@@ -50,6 +50,7 @@ export const ROUTES = {
   USER_DECKS: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/user/decks`,
   USER_CUSTOM_CARDS: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/user/cards/create`,
   USER_SHOP: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/user/shop`,
+  USER_AUCTION: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/user/auction`,
   USER_TRANSACTIONS: (lang: SupportedLocale = DEFAULT_LOCALE) => `/${lang}/user/transaction`,
 
   // 3. Admin Category Routes (Console Panel Style, .env Auth)
@@ -142,6 +143,12 @@ export const USER_NAV_ITEMS: readonly PanelNavItem[] = [
     href: ROUTES.USER_SHOP,
     labelKey: "userNav.shop",
     icon: "ShoppingBag",
+  },
+  {
+    key: "auction",
+    href: ROUTES.USER_AUCTION,
+    labelKey: "userNav.auction",
+    icon: "Gavel",
   },
   {
     key: "transactions",

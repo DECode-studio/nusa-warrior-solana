@@ -1,0 +1,17 @@
+export const AUCTION_SEMANTIC_IDS = {
+  pageRoot: "user-auction-page",
+  headerTitle: "user-auction-title",
+  createButton: "user-auction-create-btn",
+  frozenBanner: "user-auction-frozen-banner",
+  tabExplore: "user-auction-tab-explore",
+  tabSelling: "user-auction-tab-selling",
+  tabBidding: "user-auction-tab-bidding",
+  tabHistory: "user-auction-tab-history",
+  searchInput: "user-auction-search",
+  kingdomFilter: "user-auction-kingdom-filter",
+  sortSelect: "user-auction-sort-select",
+  createModal: "user-auction-create-modal",
+  detailModal: "user-auction-detail-modal",
+  bidInput: "user-auction-bid-input",
+  bidSubmitButton: "user-auction-bid-submit",
+} as const;

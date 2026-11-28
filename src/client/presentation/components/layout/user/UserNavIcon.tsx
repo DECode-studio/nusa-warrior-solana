@@ -3,6 +3,7 @@
 import React from "react";
 import {
   BookOpen,
+  Gavel,
   GraduationCap,
   Layers,
   LayoutDashboard,
@@ -34,6 +35,8 @@ export function UserNavIcon({
       return <Layers className={className} />;
     case "ShoppingBag":
       return <ShoppingBag className={className} />;
+    case "Gavel":
+      return <Gavel className={className} />;
     case "ReceiptText":
       return <ReceiptText className={className} />;
     case "Sparkles":

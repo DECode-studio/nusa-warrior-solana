@@ -101,6 +101,15 @@ export const TEAM_API_ROUTES = {
   list: `${API_BASE_PATHS.v1}/team`,
 } as const;
 
+export const AUCTION_API_ROUTES = {
+  list: `${API_BASE_PATHS.v1}/auctions`,
+  prepareCreate: `${API_BASE_PATHS.v1}/auctions/prepare`,
+  detail: (id: string) => `${API_BASE_PATHS.v1}/auctions/${id}`,
+  managePrepare: (id: string) => `${API_BASE_PATHS.v1}/auctions/${id}/manage-prepare`,
+  bids: (id: string) => `${API_BASE_PATHS.v1}/auctions/${id}/bids`,
+  finalize: (id: string) => `${API_BASE_PATHS.v1}/auctions/${id}/finalize`,
+} as const;
+
 export const ADMIN_API_ROUTES = {
   cards: `${API_BASE_PATHS.v1}/admin/cards`,
   reports: `${API_BASE_PATHS.v1}/admin/reports`,
@@ -153,6 +162,7 @@ export const API_ROUTES = {
     TOPUP_ORDER: SHOP_API_ROUTES.topupOrder,
   },
   SOLANA: SOLANA_API_ROUTES,
+  AUCTIONS: AUCTION_API_ROUTES,
   ADMIN: {
     CARDS: ADMIN_API_ROUTES.cards,
     REPORTS: ADMIN_API_ROUTES.reports,
